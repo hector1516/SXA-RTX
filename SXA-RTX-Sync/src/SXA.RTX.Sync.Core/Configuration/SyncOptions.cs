@@ -15,6 +15,8 @@ public sealed class SyncOptions
     public string DeviceConfigFile { get; set; } = "device.config";
     public string MachineType { get; set; } = "";
     public string MachineName { get; set; } = "";
+    public bool AutoCheckUpdates { get; set; } = true;
+    public string UpdateRepo { get; set; } = "hector1516/SXA-RTX";
     public List<SyncTableConfig> Tables { get; set; } = new();
 }
 

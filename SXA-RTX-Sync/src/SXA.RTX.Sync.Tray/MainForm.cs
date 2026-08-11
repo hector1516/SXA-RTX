@@ -5,6 +5,7 @@ namespace SXA.RTX.Sync.Tray;
 public sealed class MainForm : Form
 {
     private readonly SyncManager _manager;
+    private readonly Updater _updater;
     private NotifyIcon _icon;
     private Label _lblStatus;
     private Button _btnPause;
@@ -12,8 +13,11 @@ public sealed class MainForm : Form
     private StatusDot _dot;
     private ErrorBanner _errorBanner;
     private FlatButton _btnLog;
+    private ToolStripMenuItem? _updateMenuItem;
+    private UpdateInfo? _updateInfo;
     private int _errorCount;
     private DateTime _lastErrorBalloon = DateTime.MinValue;
+    private bool _updating;
 
     public MainForm(SyncManager manager)
     {
@@ -29,6 +33,8 @@ public sealed class MainForm : Form
         ForeColor = UiTheme.Text;
         Font = UiTheme.BodyFont;
         Icon = IconLoader.AppIcon;
+
+        _updater = new Updater(manager.CurrentOptions);
 
         BuildUi();
         CreateTray();
@@ -134,6 +140,15 @@ public sealed class MainForm : Form
         menu.Items.Add("Configuración...", null, (_, _) => ShowConfig());
         menu.Items.Add("Estado...", null, (_, _) => ShowStatus());
         menu.Items.Add("Errores...", null, (_, _) => ShowErrors());
+        _updateMenuItem = new ToolStripMenuItem("Actualización disponible...")
+        {
+            Enabled = false,
+            Visible = false
+        };
+        _updateMenuItem.Click += (_, _) => BeginInstallUpdate();
+        menu.Items.Add(_updateMenuItem);
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Buscar actualizaciones...", null, async (_, _) => await CheckForUpdatesAsync(showResult: true));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Pausar / Reanudar", null, (_, _) => TogglePause());
         menu.Items.Add("Salir", null, (_, _) => ExitApp());
@@ -179,6 +194,11 @@ public sealed class MainForm : Form
         if (!ok || !TrayComposition.IsConfigValid(_manager.CurrentOptions))
         {
             ShowConfig();
+        }
+
+        if (_manager.CurrentOptions.AutoCheckUpdates)
+        {
+            _ = CheckForUpdatesAsync(showResult: false);
         }
     }
 
@@ -267,6 +287,106 @@ public sealed class MainForm : Form
         {
             _dot.Color = _manager.IsPaused ? UiTheme.Warning : _errorCount > 0 ? UiTheme.Error : UiTheme.Success;
         }
+    }
+
+    private async Task CheckForUpdatesAsync(bool showResult)
+    {
+        if (_updating)
+        {
+            return;
+        }
+
+        try
+        {
+            var info = await _updater.CheckForUpdateAsync(CancellationToken.None);
+            _updateInfo = info;
+            if (info is not null)
+            {
+                _updateMenuItem!.Text = $"Instalar actualización {info.DisplayName}...";
+                _updateMenuItem.Enabled = true;
+                _updateMenuItem.Visible = true;
+                _icon.BalloonTipTitle = "Actualización disponible";
+                _icon.BalloonTipText = $"Hay una nueva versión ({info.DisplayName}). Abra el menú de la bandeja para instalarla.";
+                _icon.ShowBalloonTip(6000);
+            }
+
+            if (showResult)
+            {
+                if (info is null)
+                {
+                    MessageBox.Show(this,
+                        $"Ya tienes la última versión instalada ({_updater.CurrentVersion.ToString(3)}).",
+                        "Buscar actualizaciones", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    var result = MessageBox.Show(this,
+                        $"Hay una nueva versión disponible: {info.DisplayName}\r\n\r\n{info.Notes}\r\n\r\n¿Descargar e instalar ahora?",
+                        "Actualización disponible",
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+                    if (result == DialogResult.Yes)
+                    {
+                        await InstallUpdateAsync(info);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Diagnostics.Warn("Actualizador", $"Fallo la comprobación de actualizaciones: {ex.Message}");
+            if (showResult)
+            {
+                MessageBox.Show(this, $"No se pudo comprobar actualizaciones: {ex.Message}", "Actualizador",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+    }
+
+    private async void BeginInstallUpdate()
+    {
+        if (_updateInfo is null)
+        {
+            return;
+        }
+
+        var confirm = MessageBox.Show(this,
+            $"Se descargará e instalará {_updateInfo.DisplayName}. La app se reiniciará sola.\r\n\r\n¿Continuar?",
+            "Instalar actualización",
+            MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+        if (confirm != DialogResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            await InstallUpdateAsync(_updateInfo);
+        }
+        catch (Exception ex)
+        {
+            Diagnostics.Error("Actualizador", "No se pudo instalar la actualización.", ex);
+            MessageBox.Show(this, $"Error al instalar: {ex.Message}", "Actualizador",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private async Task InstallUpdateAsync(UpdateInfo info)
+    {
+        _updating = true;
+        _lblStatus.Text = $"Descargando {info.DisplayName}...";
+        _dot.Color = UiTheme.Warning;
+
+        await _updater.ApplyAsync(info, CancellationToken.None);
+
+        _icon.BalloonTipTitle = "Actualización instalada";
+        _icon.BalloonTipText = "Reiniciando SXA RTX Sync...";
+        _icon.ShowBalloonTip(3000);
+
+        _allowClose = true;
+        _icon.Visible = false;
+        await _manager.StopAsync();
+        Close();
+        Application.Exit();
     }
 
     private void ShowPanel()

@@ -365,6 +365,8 @@ public sealed class ConfigForm : Form
                 DeviceConfigFile = _manager.CurrentOptions.DeviceConfigFile,
                 MachineType = _tbMachineType.Text.Trim(),
                 MachineName = _tbMachineName.Text.Trim(),
+                AutoCheckUpdates = _manager.CurrentOptions.AutoCheckUpdates,
+                UpdateRepo = _manager.CurrentOptions.UpdateRepo,
                 Tables = tables
             };
 

@@ -106,6 +106,8 @@ public sealed class SyncManager : IAsyncDisposable
         current.DeviceConfigFile = newOptions.DeviceConfigFile;
         current.MachineType = newOptions.MachineType;
         current.MachineName = newOptions.MachineName;
+        current.AutoCheckUpdates = newOptions.AutoCheckUpdates;
+        current.UpdateRepo = newOptions.UpdateRepo;
         current.Tables = newOptions.Tables;
 
         _store.Save(current);
