@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SXA.RTX.Sync.Core\SXA.RTX.Sync.Core.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ApplicationIcon Include="Assets\app.ico" />
+    <EmbeddedResource Include="Assets\app.ico" />
+    <EmbeddedResource Include="Assets\logo.png" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyTitle>SXA RTX Sync</AssemblyTitle>
+    <Product>SXA RTX Sync</Product>
+    <Description>Sincronizador VTi/VTech de pruebas RTX</Description>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+  </PropertyGroup>
+
+</Project>

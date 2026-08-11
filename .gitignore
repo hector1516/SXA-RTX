@@ -1,0 +1,18 @@
+# Build artifacts
+bin/
+obj/
+*.user
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# Runtime
+device.config
+*.bak
+logs/
+
+# Local SQL
+*.mdf
+*.ldf

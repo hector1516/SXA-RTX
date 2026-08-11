@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SXA.RTX.Sync.Core/SXA.RTX.Sync.Core.csproj" />
+    <Project Path="src/SXA.RTX.Sync.Tray/SXA.RTX.Sync.Tray.csproj" />
+    <Project Path="src/SXA.RTX.Sync.Worker/SXA.RTX.Sync.Worker.csproj" />
+  </Folder>
+</Solution>
