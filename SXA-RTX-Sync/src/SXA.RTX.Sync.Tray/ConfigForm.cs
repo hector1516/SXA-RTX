@@ -402,6 +402,8 @@ public sealed class ConfigForm : Form
                 MachineType = _tbMachineType.Text.Trim(),
                 MachineName = _tbMachineName.Text.Trim(),
                 AutoCheckUpdates = _manager.CurrentOptions.AutoCheckUpdates,
+                AutoInstallUpdates = _manager.CurrentOptions.AutoInstallUpdates,
+                UpdateCheckIntervalMinutes = _manager.CurrentOptions.UpdateCheckIntervalMinutes,
                 UpdateRepo = _manager.CurrentOptions.UpdateRepo,
                 Tables = tables
             };
