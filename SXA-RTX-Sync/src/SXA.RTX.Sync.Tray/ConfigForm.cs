@@ -56,7 +56,7 @@ public sealed class ConfigForm : Form
         {
             Location = new Point(24, 432),
             Size = new Size(872, 18),
-            Text = "Paso 1: escanee local y remoto. Paso 2: genere los pares. Paso 3: revise la clave y guarde.",
+            Text = "Paso 1: escanee local y remoto. Paso 2: genere los pares. Paso 3: revise la clave y guarde.\r\nLas tablas que no existan en remoto se crearán con el prefijo del tipo de máquina (VTi_ o VTech_).",
             ForeColor = UiTheme.TextFaint,
             Font = UiTheme.SmallFont,
             BackColor = Color.Transparent
@@ -92,6 +92,22 @@ public sealed class ConfigForm : Form
         btnRemove.Click += (_, _) => RemovePair();
         btnSave.Click += async (_, _) => await SaveAsync();
         btnCancel.Click += (_, _) => Close();
+    }
+
+    private string BuildMachinePrefix()
+    {
+        var type = _tbMachineType.Text.Trim();
+        if (string.IsNullOrWhiteSpace(type))
+        {
+            return "";
+        }
+
+        if (type.Equals("VTech", StringComparison.OrdinalIgnoreCase))
+        {
+            return "VTech";
+        }
+
+        return type.Equals("VTi", StringComparison.OrdinalIgnoreCase) ? "VTi" : type;
     }
 
     private static TextBox CreateTextBox(int x, int y, int width)
@@ -258,6 +274,7 @@ public sealed class ConfigForm : Form
         _btnScanRemote.Enabled = false;
         try
         {
+            var prefix = BuildMachinePrefix();
             foreach (var local in selected)
             {
                 var remoteTable = _remote.FirstOrDefault(r =>
@@ -270,8 +287,27 @@ public sealed class ConfigForm : Form
                 string remoteFull;
                 if (remoteTable is null)
                 {
-                    remoteFull = local.FullName;
-                    status = "Se creará en remoto";
+                    if (string.IsNullOrWhiteSpace(prefix))
+                    {
+                        remoteFull = local.FullName;
+                        status = "Se creará en remoto";
+                    }
+                    else
+                    {
+                        var prefixedName = $"{prefix}_{local.Name}";
+                        var existing = _remote.FirstOrDefault(r =>
+                            string.Equals(r.Name, prefixedName, StringComparison.OrdinalIgnoreCase));
+                        if (existing is not null)
+                        {
+                            remoteFull = existing.FullName;
+                            status = "Listo (ya existe con prefijo)";
+                        }
+                        else
+                        {
+                            remoteFull = $"{local.Schema}.{prefixedName}";
+                            status = $"Se creará en remoto como {prefix}_";
+                        }
+                    }
                 }
                 else
                 {
@@ -365,6 +401,10 @@ public sealed class ConfigForm : Form
                 DeviceConfigFile = _manager.CurrentOptions.DeviceConfigFile,
                 MachineType = _tbMachineType.Text.Trim(),
                 MachineName = _tbMachineName.Text.Trim(),
+                AutoCheckUpdates = _manager.CurrentOptions.AutoCheckUpdates,
+                AutoInstallUpdates = _manager.CurrentOptions.AutoInstallUpdates,
+                UpdateCheckIntervalMinutes = _manager.CurrentOptions.UpdateCheckIntervalMinutes,
+                UpdateRepo = _manager.CurrentOptions.UpdateRepo,
                 Tables = tables
             };
 

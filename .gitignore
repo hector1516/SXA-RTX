@@ -13,6 +13,9 @@ device.config
 *.bak
 logs/
 
+# Publicación
+artifacts/
+
 # Local SQL
 *.mdf
 *.ldf
