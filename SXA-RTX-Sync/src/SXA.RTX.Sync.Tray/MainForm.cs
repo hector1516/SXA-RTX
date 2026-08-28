@@ -15,6 +15,7 @@ public sealed class MainForm : Form
     private FlatButton _btnLog;
     private ToolStripMenuItem? _updateMenuItem;
     private UpdateInfo? _updateInfo;
+    private System.Windows.Forms.Timer? _updateTimer;
     private int _errorCount;
     private DateTime _lastErrorBalloon = DateTime.MinValue;
     private bool _updating;
@@ -199,7 +200,49 @@ public sealed class MainForm : Form
         if (_manager.CurrentOptions.AutoCheckUpdates)
         {
             _ = CheckForUpdatesAsync(showResult: false);
+            StartUpdateTimer();
         }
+    }
+
+    private void StartUpdateTimer()
+    {
+        _updateTimer?.Stop();
+        _updateTimer?.Dispose();
+        var minutes = _manager.CurrentOptions.UpdateCheckIntervalMinutes;
+        if (minutes <= 0) minutes = 60;
+        _updateTimer = new System.Windows.Forms.Timer { Interval = minutes * 60 * 1000 };
+        _updateTimer.Tick += async (_, _) =>
+        {
+            if (_updating) return;
+            var info = await _updater.CheckForUpdateAsync(CancellationToken.None);
+            if (info is null) return;
+            _updateInfo = info;
+            SafeInvoke(() =>
+            {
+                _updateMenuItem!.Text = $"Instalar actualización {info.DisplayName}...";
+                _updateMenuItem.Enabled = true;
+                _updateMenuItem.Visible = true;
+            });
+            if (_manager.CurrentOptions.AutoInstallUpdates)
+            {
+                Diagnostics.Info("Actualizador", $"Auto-instalando {info.DisplayName}...");
+                SafeInvoke(async () =>
+                {
+                    try { await InstallUpdateAsync(info); }
+                    catch (Exception ex) { Diagnostics.Error("Actualizador", "Fallo auto-instalacion.", ex); }
+                });
+            }
+            else
+            {
+                SafeInvoke(() =>
+                {
+                    _icon.BalloonTipTitle = "Actualización disponible";
+                    _icon.BalloonTipText = $"Hay una nueva versión ({info.DisplayName}). Abra el menú de la bandeja para instalarla.";
+                    _icon.ShowBalloonTip(6000);
+                });
+            }
+        };
+        _updateTimer.Start();
     }
 
     private string TrayMachineLabel()
@@ -417,6 +460,8 @@ public sealed class MainForm : Form
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        _updateTimer?.Stop();
+        _updateTimer?.Dispose();
         _icon.Dispose();
         base.OnFormClosed(e);
     }
