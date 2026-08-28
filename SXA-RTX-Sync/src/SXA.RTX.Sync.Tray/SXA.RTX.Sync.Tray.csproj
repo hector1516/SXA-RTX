@@ -21,9 +21,9 @@
     <AssemblyTitle>SXA RTX Sync</AssemblyTitle>
     <Product>SXA RTX Sync</Product>
     <Description>Sincronizador VTi/VTech de pruebas RTX</Description>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
   </PropertyGroup>
 
 </Project>
