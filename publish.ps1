@@ -55,10 +55,26 @@ $iscc = @(
 if ($iscc -and (Test-Path $iss)) {
     Write-Host "Compilando instalador con Inno Setup..."
     & $iscc "/DMyAppVersion=$Version" $iss
-    if ($LASTEXITCODE -ne 0) { Write-Warning "Fallo al compilar el instalador (se continua solo con el ZIP)." }
-    elseif (Test-Path $setupPath) { Write-Host "Instalador creado: $setupPath" -ForegroundColor Green }
+    if ($LASTEXITCODE -ne 0) { Write-Warning "Fallo al compilar el instalador Inno Setup (se continua solo con el ZIP)." }
+    elseif (Test-Path $setupPath) { Write-Host "Instalador Inno creado: $setupPath" -ForegroundColor Green }
 } elseif (Test-Path $iss) {
-    Write-Host "Inno Setup no encontrado. Instala Inno Setup 6 para generar el instalador. Se continua solo con el ZIP." -ForegroundColor Yellow
+    Write-Host "Inno Setup no encontrado. Se omitirá el instalador Inno." -ForegroundColor DarkGray
+}
+
+# Instalador NSIS (si esta instalado, genera Setup NSIS)
+$issNSIS = Join-Path $root "installer.nsi"
+$nsisSetupPath = Join-Path $pkgDir $setupName
+$makensis = @(
+    "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
+    "$env:ProgramFiles\NSIS\makensis.exe"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($makensis -and (Test-Path $issNSIS)) {
+    Write-Host "Compilando instalador NSIS..."
+    & $makensis "/DMyAppVersion=$Version" $issNSIS
+    if ($LASTEXITCODE -ne 0) { Write-Warning "Fallo al compilar el instalador NSIS." }
+    elseif (Test-Path $nsisSetupPath) { Write-Host "Instalador NSIS creado: $nsisSetupPath" -ForegroundColor Green; $setupPath = $nsisSetupPath }
+} elseif (Test-Path $issNSIS) {
+    Write-Host "NSIS no encontrado. Se omitirá el instalador NSIS." -ForegroundColor DarkGray
 }
 
 if ($Push) {
