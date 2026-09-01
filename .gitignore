@@ -48,4 +48,8 @@ coverage/
 *.nupkg
 !**/*.nupkg
 
+# SXA-RTX Analytics now lives in its own repo https://github.com/hector1516/SXA-RTX-Analytics
+# Ignore nested clone/checkout at D:\Antigravity\SXA-RTX\SXA-RTX-Analytics
+SXA-RTX-Analytics/
+
 # SXA-RTX Analytics: never commit real connection strings, passwords, tokens
