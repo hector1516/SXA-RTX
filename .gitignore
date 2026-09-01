@@ -2,6 +2,7 @@
 bin/
 obj/
 *.user
+*.suo
 
 # IDE
 .vs/
@@ -15,7 +16,36 @@ logs/
 
 # Publicación
 artifacts/
+publish/
+**/publish/
 
 # Local SQL
 *.mdf
 *.ldf
+
+# Secrets / env
+.env
+*.env
+appsettings.*.local.json
+appsettings.Development.local.json
+secrets.json
+*.pfx
+*.key
+*.crt
+*.pem
+
+# User secrets
+secrets/
+
+# Test results
+TestResults/
+coverage/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nupkg
+!**/*.nupkg
+
+# SXA-RTX Analytics: never commit real connection strings, passwords, tokens
