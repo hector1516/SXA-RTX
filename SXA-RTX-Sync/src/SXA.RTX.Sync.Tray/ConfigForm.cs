@@ -1,3 +1,5 @@
+using System.Data;
+using Microsoft.Data.SqlClient;
 using SXA.RTX.Sync.Core.Configuration;
 using SXA.RTX.Sync.Core.Sync;
 
@@ -10,6 +12,13 @@ public sealed class ConfigForm : Form
     private readonly TextBox _tbRemote;
     private readonly TextBox _tbMachineType;
     private readonly TextBox _tbMachineName;
+    private readonly ComboBox _cbLocalInstance;
+    private readonly ComboBox _cbLocalDatabase;
+    private readonly TextBox _tbRemoteHost;
+    private readonly ComboBox _cbRemoteInstance;
+    private readonly TextBox _tbRemoteUser;
+    private readonly TextBox _tbRemotePassword;
+    private readonly ComboBox _cbRemoteDatabase;
     private readonly Button _btnScanLocal;
     private readonly Button _btnScanRemote;
     private readonly DataGridView _dgvLocal;
@@ -25,8 +34,8 @@ public sealed class ConfigForm : Form
         Text = "Configuración de sincronización";
         FormBorderStyle = FormBorderStyle.Sizable;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(920, 736);
-        MinimumSize = new Size(860, 680);
+        ClientSize = new Size(920, 860);
+        MinimumSize = new Size(920, 760);
         UiTheme.Apply(this);
         Icon = IconLoader.AppIcon;
 
@@ -38,41 +47,107 @@ public sealed class ConfigForm : Form
             LogoSize = 56
         };
 
-        _tbLocal = CreateTextBox(24, 130, 428);
-        _tbRemote = CreateTextBox(492, 130, 404);
-
-        _btnScanLocal = CreateButton("Escanear local", 24, 162, 130, UiTheme.Primary, UiTheme.PrimaryHover);
-        _btnScanRemote = CreateButton("Escanear remoto", 492, 162, 130, UiTheme.Primary, UiTheme.PrimaryHover);
-
-        _tbMachineType = CreateTextBox(24, 368, 190);
-        _tbMachineName = CreateTextBox(280, 368, 220);
-
-        var btnPairs = CreateButton("Auto-generar pares", 160, 402, 160, UiTheme.Accent, UiTheme.AccentHover);
-        var btnRemove = CreateButton("Quitar par", 334, 402, 120, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
-        var btnSave = CreateButton("Guardar y aplicar", 24, 696, 150, UiTheme.Primary, UiTheme.PrimaryHover);
-        var btnCancel = CreateButton("Cancelar", 186, 696, 110, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
-
-        _lblHint = new Label
+        // Local - Instancia
+        _cbLocalInstance = CreateCombo(24, 128, 280);
+        var btnRefreshLocalInst = CreateButton("Actualizar", 310, 128, 80, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        // Local - Base de datos
+        _cbLocalDatabase = CreateCombo(24, 178, 280);
+        var btnRefreshLocalDb = CreateButton("Actualizar", 310, 178, 80, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        // Local - Cadena (avanzado, solo lectura)
+        _tbLocal = CreateTextBox(24, 224, 428);
+        _tbLocal.ReadOnly = true;
+        _tbLocal.BackColor = Color.FromArgb(28, 32, 48);
+        var lblLocalEdit = new CheckBox
         {
-            Location = new Point(24, 432),
-            Size = new Size(872, 18),
-            Text = "Paso 1: escanee local y remoto. Paso 2: genere los pares. Paso 3: revise la clave y guarde.\r\nLas tablas que no existan en remoto se crearán con el prefijo del tipo de máquina (VTi_ o VTech_).",
+            Text = "Editar cadena",
+            Location = new Point(24, 248),
+            Size = new Size(120, 18),
             ForeColor = UiTheme.TextFaint,
             Font = UiTheme.SmallFont,
             BackColor = Color.Transparent
         };
 
-        _dgvLocal = CreateScanGrid(24, 194);
-        _dgvRemote = CreateScanGrid(492, 194);
-        _dgvPairs = CreatePairsGrid(24, 450);
+        // Remota - Host/IP
+        _tbRemoteHost = CreateTextBox(492, 128, 200);
+        var btnScanRemoteInst = CreateButton("Escanear instancias", 700, 128, 140, UiTheme.Primary, UiTheme.PrimaryHover);
+        // Remota - Instancia
+        _cbRemoteInstance = CreateCombo(492, 178, 280);
+        _cbRemoteInstance.DropDownStyle = ComboBoxStyle.DropDown;
+        // Remota - Usuario/Contraseña
+        _tbRemoteUser = CreateTextBox(492, 228, 150);
+        _tbRemotePassword = CreateTextBox(650, 228, 140);
+        _tbRemotePassword.UseSystemPasswordChar = true;
+        // Remota - Base de datos
+        _cbRemoteDatabase = CreateCombo(492, 278, 280);
+        var btnRefreshRemoteDb = CreateButton("Actualizar", 780, 278, 80, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        // Remota - Cadena
+        _tbRemote = CreateTextBox(492, 326, 404);
+        _tbRemote.ReadOnly = true;
+        _tbRemote.BackColor = Color.FromArgb(28, 32, 48);
+        var lblRemoteEdit = new CheckBox
+        {
+            Text = "Editar cadena",
+            Location = new Point(492, 350),
+            Size = new Size(120, 18),
+            ForeColor = UiTheme.TextFaint,
+            Font = UiTheme.SmallFont,
+            BackColor = Color.Transparent
+        };
+
+        _tbMachineType = CreateTextBox(24, 410, 190);
+        _tbMachineName = CreateTextBox(280, 410, 220);
+
+        _btnScanLocal = CreateButton("Escanear tablas local", 24, 268, 150, UiTheme.Primary, UiTheme.PrimaryHover);
+        _btnScanRemote = CreateButton("Escanear tablas remoto", 492, 368, 150, UiTheme.Primary, UiTheme.PrimaryHover);
+        var btnPairs = CreateButton("Auto-generar pares", 160, 472, 160, UiTheme.Accent, UiTheme.AccentHover);
+        var btnRemove = CreateButton("Quitar par", 334, 472, 120, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        var btnSave = CreateButton("Guardar y aplicar", 24, 820, 150, UiTheme.Primary, UiTheme.PrimaryHover);
+        var btnCancel = CreateButton("Cancelar", 186, 820, 110, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+
+        _lblHint = new Label
+        {
+            Location = new Point(24, 502),
+            Size = new Size(872, 32),
+            Text = "Paso 1: configura instancias y bases arriba. Paso 2: escanea tablas y genera los pares. Las tablas que no existan en remoto se crearán con el prefijo del tipo de máquina (VTi_ o VTech_).",
+            ForeColor = UiTheme.TextFaint,
+            Font = UiTheme.SmallFont,
+            BackColor = Color.Transparent
+        };
+
+        _dgvLocal = CreateScanGrid(24, 300);
+        _dgvRemote = CreateScanGrid(492, 398);
+        _dgvPairs = CreatePairsGrid(24, 540);
 
         Controls.Add(header);
+        // Local
+        Controls.Add(CreateFieldLabel("Instancia local (Windows Auth)", 24, 108));
+        Controls.Add(_cbLocalInstance);
+        Controls.Add(btnRefreshLocalInst);
+        Controls.Add(CreateFieldLabel("Base de datos local", 24, 158));
+        Controls.Add(_cbLocalDatabase);
+        Controls.Add(btnRefreshLocalDb);
+        Controls.Add(CreateFieldLabel("Cadena local", 24, 206));
         Controls.Add(_tbLocal);
+        Controls.Add(lblLocalEdit);
+        // Remote
+        Controls.Add(CreateFieldLabel("Servidor remoto (IP / Host)", 492, 108));
+        Controls.Add(_tbRemoteHost);
+        Controls.Add(btnScanRemoteInst);
+        Controls.Add(CreateFieldLabel("Instancia remota", 492, 158));
+        Controls.Add(_cbRemoteInstance);
+        Controls.Add(CreateFieldLabel("Usuario", 492, 208));
+        Controls.Add(CreateFieldLabel("Contraseña", 650, 208));
+        Controls.Add(_tbRemoteUser);
+        Controls.Add(_tbRemotePassword);
+        Controls.Add(CreateFieldLabel("Base de datos remota", 492, 258));
+        Controls.Add(_cbRemoteDatabase);
+        Controls.Add(btnRefreshRemoteDb);
+        Controls.Add(CreateFieldLabel("Cadena remota", 492, 306));
         Controls.Add(_tbRemote);
-        Controls.Add(CreateFieldLabel("Local (SQL Express)", 24, 110));
-        Controls.Add(CreateFieldLabel("Remota (SQL Server)", 492, 110));
-        Controls.Add(CreateFieldLabel("Tipo de máquina (VTi / VTech)", 24, 348));
-        Controls.Add(CreateFieldLabel("Nombre del PC", 280, 348));
+        Controls.Add(lblRemoteEdit);
+        // Common
+        Controls.Add(CreateFieldLabel("Tipo de máquina (VTi / VTech)", 24, 390));
+        Controls.Add(CreateFieldLabel("Nombre del PC", 280, 390));
         Controls.Add(_btnScanLocal);
         Controls.Add(_btnScanRemote);
         Controls.Add(_tbMachineType);
@@ -86,12 +161,232 @@ public sealed class ConfigForm : Form
         Controls.Add(_dgvRemote);
         Controls.Add(_dgvPairs);
 
+        // Eventos
+        lblLocalEdit.CheckedChanged += (_, _) => { _tbLocal.ReadOnly = !lblLocalEdit.Checked; _tbLocal.BackColor = lblLocalEdit.Checked ? UiTheme.BgPanel : Color.FromArgb(28, 32, 48); };
+        lblRemoteEdit.CheckedChanged += (_, _) => { _tbRemote.ReadOnly = !lblRemoteEdit.Checked; _tbRemote.BackColor = lblRemoteEdit.Checked ? UiTheme.BgPanel : Color.FromArgb(28, 32, 48); };
+
+        _cbLocalInstance.SelectedIndexChanged += (_, _) => UpdateLocalConnectionString();
+        _cbLocalDatabase.SelectedIndexChanged += (_, _) => UpdateLocalConnectionString();
+        _cbLocalDatabase.DropDown += async (_, _) => await RefreshLocalDatabasesAsync();
+
+        _tbRemoteHost.TextChanged += (_, _) => UpdateRemoteConnectionString();
+        _cbRemoteInstance.SelectedIndexChanged += (_, _) => UpdateRemoteConnectionString();
+        _cbRemoteDatabase.SelectedIndexChanged += (_, _) => UpdateRemoteConnectionString();
+        _tbRemoteUser.TextChanged += (_, _) => UpdateRemoteConnectionString();
+        _tbRemotePassword.TextChanged += (_, _) => UpdateRemoteConnectionString();
+        _cbRemoteDatabase.DropDown += async (_, _) => await RefreshRemoteDatabasesAsync();
+
+        btnRefreshLocalInst.Click += async (_, _) => await RefreshLocalInstancesAsync();
+        btnRefreshLocalDb.Click += async (_, _) => await RefreshLocalDatabasesAsync();
+        btnScanRemoteInst.Click += async (_, _) => await RefreshRemoteInstancesAsync();
+        btnRefreshRemoteDb.Click += async (_, _) => await RefreshRemoteDatabasesAsync();
+
         _btnScanLocal.Click += async (_, _) => await ScanLocalAsync();
         _btnScanRemote.Click += async (_, _) => await ScanRemoteAsync();
         btnPairs.Click += async (_, _) => await AutoGenerateAsync();
         btnRemove.Click += (_, _) => RemovePair();
         btnSave.Click += async (_, _) => await SaveAsync();
         btnCancel.Click += (_, _) => Close();
+
+        Load += async (_, _) => await OnLoadAsync();
+    }
+
+    private async Task OnLoadAsync()
+    {
+        // Parsear cadenas actuales para precargar combos
+        ParseLocalConnectionString(_manager.CurrentOptions.LocalConnectionString);
+        ParseRemoteConnectionString(_manager.CurrentOptions.RemoteConnectionString);
+        _tbMachineType.Text = _manager.CurrentOptions.MachineType;
+        _tbMachineName.Text = _manager.CurrentOptions.MachineName;
+        _tbLocal.Text = _manager.CurrentOptions.LocalConnectionString;
+        _tbRemote.Text = _manager.CurrentOptions.RemoteConnectionString;
+
+        await RefreshLocalInstancesAsync();
+        // Intentar precargar BD locales si hay instancia
+        if (!string.IsNullOrWhiteSpace(_cbLocalInstance.Text))
+        {
+            await RefreshLocalDatabasesAsync();
+        }
+    }
+
+    private void ParseLocalConnectionString(string cs)
+    {
+        try
+        {
+            var b = new SqlConnectionStringBuilder(cs);
+            _cbLocalInstance.Text = b.DataSource;
+            _cbLocalDatabase.Text = b.InitialCatalog;
+        }
+        catch { }
+    }
+
+    private void ParseRemoteConnectionString(string cs)
+    {
+        try
+        {
+            var b = new SqlConnectionStringBuilder(cs);
+            var ds = b.DataSource;
+            // Separar host\instancia
+            var slash = ds.IndexOf('\\');
+            if (slash >= 0)
+            {
+                _tbRemoteHost.Text = ds.Substring(0, slash);
+                var rest = ds.Substring(slash + 1);
+                var comma = rest.IndexOf(',');
+                _cbRemoteInstance.Text = comma >= 0 ? rest.Substring(0, comma) : rest;
+            }
+            else
+            {
+                var comma = ds.IndexOf(',');
+                if (comma >= 0)
+                {
+                    _tbRemoteHost.Text = ds.Substring(0, comma);
+                }
+                else
+                {
+                    _tbRemoteHost.Text = ds;
+                }
+                _cbRemoteInstance.Text = "";
+            }
+            _tbRemoteUser.Text = b.UserID;
+            _tbRemotePassword.Text = b.Password;
+            _cbRemoteDatabase.Text = b.InitialCatalog;
+        }
+        catch { }
+    }
+
+    private void UpdateLocalConnectionString()
+    {
+        var cs = SqlDiscoveryService.BuildLocalConnectionString(_cbLocalInstance.Text, _cbLocalDatabase.Text);
+        _tbLocal.Text = cs;
+    }
+
+    private void UpdateRemoteConnectionString()
+    {
+        var cs = SqlDiscoveryService.BuildRemoteConnectionString(_tbRemoteHost.Text, _cbRemoteInstance.Text, _cbRemoteDatabase.Text, _tbRemoteUser.Text, _tbRemotePassword.Text);
+        _tbRemote.Text = cs;
+    }
+
+    private async Task RefreshLocalInstancesAsync()
+    {
+        try
+        {
+            var instances = await SqlDiscoveryService.GetLocalInstancesAsync(CancellationToken.None);
+            var current = _cbLocalInstance.Text;
+            _cbLocalInstance.Items.Clear();
+            foreach (var inst in instances) _cbLocalInstance.Items.Add(inst);
+            if (!string.IsNullOrWhiteSpace(current) && !_cbLocalInstance.Items.Contains(current))
+            {
+                _cbLocalInstance.Items.Add(current);
+            }
+            if (!string.IsNullOrWhiteSpace(current)) _cbLocalInstance.Text = current;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"No se pudieron listar instancias locales: {ex.Message}", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
+
+    private async Task RefreshLocalDatabasesAsync()
+    {
+        var instance = _cbLocalInstance.Text.Trim();
+        if (string.IsNullOrWhiteSpace(instance))
+        {
+            MessageBox.Show(this, "Selecciona primero la instancia local.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        try
+        {
+            var cs = SqlDiscoveryService.BuildLocalConnectionString(instance, "master");
+            var dbs = await SqlDiscoveryService.GetDatabasesAsync(cs, CancellationToken.None);
+            var current = _cbLocalDatabase.Text;
+            _cbLocalDatabase.Items.Clear();
+            foreach (var db in dbs) _cbLocalDatabase.Items.Add(db);
+            if (!string.IsNullOrWhiteSpace(current) && !_cbLocalDatabase.Items.Contains(current))
+            {
+                _cbLocalDatabase.Items.Add(current);
+            }
+            if (!string.IsNullOrWhiteSpace(current)) _cbLocalDatabase.Text = current;
+            UpdateLocalConnectionString();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"No se pudieron listar bases locales: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private async Task RefreshRemoteInstancesAsync()
+    {
+        var host = _tbRemoteHost.Text.Trim();
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            MessageBox.Show(this, "Escribe primero la IP o nombre del servidor remoto.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        try
+        {
+            var instances = await SqlDiscoveryService.GetRemoteInstancesAsync(host, CancellationToken.None);
+            var current = _cbRemoteInstance.Text;
+            _cbRemoteInstance.Items.Clear();
+            foreach (var inst in instances)
+            {
+                // Quitar prefijo host\ para mostrar solo instancia
+                var name = inst.Contains("\\") ? inst.Substring(inst.IndexOf("\\") + 1) : inst;
+                if (name.Equals(host, StringComparison.OrdinalIgnoreCase)) name = "";
+                if (!string.IsNullOrWhiteSpace(name) && !_cbRemoteInstance.Items.Contains(name))
+                {
+                    _cbRemoteInstance.Items.Add(name);
+                }
+                else if (string.IsNullOrWhiteSpace(name) && !_cbRemoteInstance.Items.Contains("(default)"))
+                {
+                    _cbRemoteInstance.Items.Add("(default)");
+                }
+            }
+            if (!string.IsNullOrWhiteSpace(current) && !_cbRemoteInstance.Items.Contains(current))
+            {
+                _cbRemoteInstance.Items.Add(current);
+            }
+            if (instances.Count == 0)
+            {
+                MessageBox.Show(this, "No se detectaron instancias (SQL Browser apagado o firewall). Escribe la instancia manualmente si la conoces.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"No se pudieron listar instancias remotas: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private async Task RefreshRemoteDatabasesAsync()
+    {
+        var host = _tbRemoteHost.Text.Trim();
+        var user = _tbRemoteUser.Text.Trim();
+        var pass = _tbRemotePassword.Text;
+        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(user))
+        {
+            MessageBox.Show(this, "Completa IP, instancia (si aplica), usuario y contraseña antes de listar bases.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        try
+        {
+            var inst = _cbRemoteInstance.Text.Trim();
+            if (inst == "(default)") inst = "";
+            var cs = SqlDiscoveryService.BuildRemoteConnectionString(host, inst, "master", user, pass);
+            var dbs = await SqlDiscoveryService.GetDatabasesAsync(cs, CancellationToken.None);
+            var current = _cbRemoteDatabase.Text;
+            _cbRemoteDatabase.Items.Clear();
+            foreach (var db in dbs) _cbRemoteDatabase.Items.Add(db);
+            if (!string.IsNullOrWhiteSpace(current) && !_cbRemoteDatabase.Items.Contains(current))
+            {
+                _cbRemoteDatabase.Items.Add(current);
+            }
+            if (!string.IsNullOrWhiteSpace(current)) _cbRemoteDatabase.Text = current;
+            UpdateRemoteConnectionString();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"No se pudieron listar bases remotas: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private string BuildMachinePrefix()
@@ -120,6 +415,20 @@ public sealed class ConfigForm : Form
             ForeColor = UiTheme.Text,
             BorderStyle = BorderStyle.FixedSingle,
             Font = UiTheme.BodyFont
+        };
+    }
+
+    private static ComboBox CreateCombo(int x, int y, int width)
+    {
+        return new ComboBox
+        {
+            Location = new Point(x, y),
+            Size = new Size(width, 24),
+            BackColor = UiTheme.BgPanel,
+            ForeColor = UiTheme.Text,
+            FlatStyle = FlatStyle.Flat,
+            Font = UiTheme.BodyFont,
+            DropDownStyle = ComboBoxStyle.DropDown
         };
     }
 
@@ -158,7 +467,7 @@ public sealed class ConfigForm : Form
         var grid = new DataGridView
         {
             Location = new Point(x, y),
-            Size = new Size(404, 140),
+            Size = new Size(404, 120),
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             RowHeadersVisible = false,
@@ -179,7 +488,7 @@ public sealed class ConfigForm : Form
         var grid = new DataGridView
         {
             Location = new Point(x, y),
-            Size = new Size(872, 230),
+            Size = new Size(872, 200),
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             RowHeadersVisible = false,
@@ -226,7 +535,7 @@ public sealed class ConfigForm : Form
         finally
         {
             btn.Enabled = true;
-            btn.Text = isLocal ? "Escanear local" : "Escanear remoto";
+            btn.Text = isLocal ? "Escanear tablas local" : "Escanear tablas remoto";
         }
     }
 
