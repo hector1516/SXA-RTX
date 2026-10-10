@@ -76,6 +76,11 @@ public sealed class SyncWorker(
             {
                 break;
             }
+            catch (SyncAuthenticationException ex)
+            {
+                failures = 6; // backoff maximo: no martillar el servidor con credenciales malas
+                logger.LogError(ex, "El servidor remoto rechazo las credenciales. Se usara el backoff maximo.");
+            }
             catch (Exception ex)
             {
                 failures = Math.Min(failures + 1, 6);

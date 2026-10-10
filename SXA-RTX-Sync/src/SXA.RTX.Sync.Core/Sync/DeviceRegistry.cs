@@ -31,7 +31,7 @@ public sealed class DeviceRegistry
         CancellationToken ct)
     {
         var tableQ = SqlName.Quote(_options.DeviceCatalogTable);
-        await using var connection = new SqlConnection(_options.RemoteConnectionString);
+        await using var connection = new SqlConnection(ConnectionStringHelper.Harden(_options.RemoteConnectionString));
         await connection.OpenAsync(ct);
 
         if (!_schemaEnsured)

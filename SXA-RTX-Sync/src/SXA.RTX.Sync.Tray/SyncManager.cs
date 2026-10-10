@@ -16,6 +16,8 @@ public sealed class SyncManager : IAsyncDisposable
     private CancellationTokenSource _cts = new();
     private volatile bool _paused;
     private volatile bool _exiting;
+    private volatile bool _pausedByAuth;
+    private int _authFailures;
     private Task? _loop;
 
     public DeviceIdentity Identity { get; }
@@ -87,6 +89,8 @@ public sealed class SyncManager : IAsyncDisposable
     public void Resume()
     {
         _paused = false;
+        _pausedByAuth = false;
+        Interlocked.Exchange(ref _authFailures, 0);
         StateChanged?.Invoke();
     }
 
@@ -116,6 +120,14 @@ public sealed class SyncManager : IAsyncDisposable
         _schema.ClearCaches();
         _engine.ClearCaches();
         _registry.ClearCache();
+
+        Interlocked.Exchange(ref _authFailures, 0);
+        if (_pausedByAuth)
+        {
+            _pausedByAuth = false;
+            _paused = false;
+        }
+
         await _schema.EnsureAllAsync(ct);
         LogUpdated?.Invoke("Configuración aplicada.");
         StateChanged?.Invoke();
@@ -171,10 +183,27 @@ public sealed class SyncManager : IAsyncDisposable
                     LogUpdated?.Invoke($"Sincronizadas {total} filas ({DateTime.Now:HH:mm:ss}).");
                 }
                 failures = 0;
+                Interlocked.Exchange(ref _authFailures, 0);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 break;
+            }
+            catch (SyncAuthenticationException ex)
+            {
+                var authFailures = Interlocked.Increment(ref _authFailures);
+                failures = 6; // backoff maximo para no martillar el servidor
+                _logger.LogError(ex, "Credenciales remotas rechazadas (intento {n}).", authFailures);
+                LogUpdated?.Invoke("Credenciales remotas rechazadas. Revisa Configuración.");
+                if (authFailures >= 3)
+                {
+                    _paused = true;
+                    _pausedByAuth = true;
+                    _logger.LogError("Sincronización en pausa automática tras {n} rechazos de credenciales. " +
+                        "El servidor remoto no será contactado hasta corregir y reanudar.", authFailures);
+                    LogUpdated?.Invoke("Pausa automática: credenciales remotas rechazadas. Corrige y reanuda.");
+                    StateChanged?.Invoke();
+                }
             }
             catch (Exception ex)
             {

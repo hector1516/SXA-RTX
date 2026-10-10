@@ -36,6 +36,9 @@ public sealed class SyncEngine
         lock (_tableLock) { _tables.Clear(); }
     }
 
+    private string LocalCs() => ConnectionStringHelper.Harden(_options.LocalConnectionString);
+    private string RemoteCs() => ConnectionStringHelper.Harden(_options.RemoteConnectionString);
+
     public async Task<List<SyncTableResult>> SyncAllAsync(string deviceId, CancellationToken ct)
     {
         var results = new List<SyncTableResult>();
@@ -57,6 +60,13 @@ public sealed class SyncEngine
             }
             catch (Exception ex)
             {
+                if (ConnectionStringHelper.IsLoginFailure(ex))
+                {
+                    _logger.LogError(ex, "El servidor remoto rechazo las credenciales para {table}", table.LocalTable);
+                    throw new SyncAuthenticationException(
+                        "El servidor remoto rechazo el usuario o la contrasena.", ex);
+                }
+
                 _logger.LogError(ex, "Fallo al sincronizar la tabla {table}", table.LocalTable);
                 results.Add(new SyncTableResult(table.LocalTable, 0, 0, 0));
             }
@@ -77,7 +87,7 @@ public sealed class SyncEngine
             ct.ThrowIfCancellationRequested();
 
             List<LogEntry> entries;
-            await using (var local = new SqlConnection(_options.LocalConnectionString))
+            await using (var local = new SqlConnection(LocalCs()))
             {
                 await local.OpenAsync(ct);
                 entries = await ClaimLogBatchAsync(local, logQ, config.LocalTable, ct);
@@ -185,7 +195,7 @@ public sealed class SyncEngine
         string keyValue,
         CancellationToken ct)
     {
-        var conn = new SqlConnection(_options.LocalConnectionString);
+        var conn = new SqlConnection(LocalCs());
         await using var _ = conn;
         await conn.OpenAsync(ct);
 
@@ -254,7 +264,7 @@ public sealed class SyncEngine
 
         var insertSql = $"INSERT INTO {info.RemoteQ} ({string.Join(", ", cols)}) VALUES ({string.Join(", ", ps)});";
 
-        var conn = new SqlConnection(_options.RemoteConnectionString);
+        var conn = new SqlConnection(RemoteCs());
         await using var _ = conn;
         await conn.OpenAsync(ct);
 
@@ -321,7 +331,7 @@ public sealed class SyncEngine
             WHERE {whereKey} AND [{originCol.Name}] = @origin;
             """;
 
-        var conn = new SqlConnection(_options.RemoteConnectionString);
+        var conn = new SqlConnection(RemoteCs());
         await using var _ = conn;
         await conn.OpenAsync(ct);
 
@@ -345,7 +355,7 @@ public sealed class SyncEngine
 
         var sql = $"SELECT COUNT(*) FROM {info.RemoteQ} WHERE [{info.KeyColumn}] = @key AND [{originCol.Name}] = @origin;";
 
-        var conn = new SqlConnection(_options.RemoteConnectionString);
+        var conn = new SqlConnection(RemoteCs());
         await using var _ = conn;
         await conn.OpenAsync(ct);
 
@@ -429,7 +439,7 @@ public sealed class SyncEngine
             WHERE Id = @id AND Status = 1;
             """;
 
-        var conn = new SqlConnection(_options.LocalConnectionString);
+        var conn = new SqlConnection(LocalCs());
         await using var _ = conn;
         await conn.OpenAsync(ct);
 
@@ -454,7 +464,7 @@ public sealed class SyncEngine
         var remoteQ = SqlName.Quote(config.RemoteTable);
 
         List<ColumnInfo> localColumns;
-        await using (var local = new SqlConnection(_options.LocalConnectionString))
+        await using (var local = new SqlConnection(LocalCs()))
         {
             await local.OpenAsync(ct);
             localColumns = await DatabaseIntrospection.GetColumnsAsync(local, localQ, ct);
@@ -473,7 +483,7 @@ public sealed class SyncEngine
         }
 
         List<ColumnInfo> remoteColumns;
-        await using (var remote = new SqlConnection(_options.RemoteConnectionString))
+        await using (var remote = new SqlConnection(RemoteCs()))
         {
             await remote.OpenAsync(ct);
             remoteColumns = await DatabaseIntrospection.GetColumnsAsync(remote, remoteQ, ct);

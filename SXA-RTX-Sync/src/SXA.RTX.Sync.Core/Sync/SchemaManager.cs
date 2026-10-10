@@ -56,7 +56,7 @@ public sealed class SchemaManager
             }
         }
 
-        await using var conn = new SqlConnection(_options.LocalConnectionString);
+        await using var conn = new SqlConnection(ConnectionStringHelper.Harden(_options.LocalConnectionString));
         await conn.OpenAsync(ct);
         await EnsureSyncLogTableAsync(conn, logQ, ct);
         await EnsureTriggerAsync(conn, localQ, logQ, table.KeyColumn, table.LocalTable, ct);
@@ -82,7 +82,7 @@ public sealed class SchemaManager
 
         var localColumns = await DatabaseScanner.GetColumnsAsync(_options.LocalConnectionString, table.LocalTable, ct);
 
-        await using var remote = new SqlConnection(_options.RemoteConnectionString);
+        await using var remote = new SqlConnection(ConnectionStringHelper.Harden(_options.RemoteConnectionString));
         await remote.OpenAsync(ct);
 
         await EnsureRemoteTableAsync(remote, remoteQ, localColumns, table.KeyColumn, ct);

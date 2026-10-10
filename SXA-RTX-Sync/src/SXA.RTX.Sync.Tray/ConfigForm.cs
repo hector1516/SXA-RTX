@@ -717,8 +717,25 @@ public sealed class ConfigForm : Form
                 Tables = tables
             };
 
-            await _manager.ReconfigureAsync(opts, CancellationToken.None);
+            var localTest = await SqlDiscoveryService.TestConnectionAsync(opts.LocalConnectionString, CancellationToken.None);
+            var remoteTest = await SqlDiscoveryService.TestConnectionAsync(opts.RemoteConnectionString, CancellationToken.None);
+            if (!localTest.Ok || !remoteTest.Ok)
+            {
+                var detail = $"Local: {(localTest.Ok ? "OK" : localTest.Message)}\r\nRemota: {(remoteTest.Ok ? "OK" : remoteTest.Message)}";
+                var authWarning = remoteTest.IsAuthError
+                    ? "\r\n\r\nLa contraseña remota fue rechazada. Si guardas así, la sincronización se pausará automáticamente para no saturar el servidor central."
+                    : "";
+                var choice = MessageBox.Show(this,
+                    $"No se pudo validar la conexión:\r\n\r\n{detail}{authWarning}\r\n\r\n¿Guardar de todos modos?",
+                    "Validar conexión",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+                if (choice != DialogResult.Yes)
+                {
+                    return;
+                }
+            }
 
+            await _manager.ReconfigureAsync(opts, CancellationToken.None);
             MessageBox.Show(this,
                 $"Configuración guardada. {tables.Count} tabla(s) en sincronización.",
                 "Listo", MessageBoxButtons.OK, MessageBoxIcon.Information);
