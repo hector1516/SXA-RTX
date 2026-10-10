@@ -78,9 +78,35 @@ public static class SqlDiscoveryService
             InitialCatalog = string.IsNullOrWhiteSpace(database) ? "master" : database.Trim(),
             IntegratedSecurity = true,
             TrustServerCertificate = true,
-            ConnectTimeout = 5
+            ConnectTimeout = 5,
+            MaxPoolSize = ConnectionStringHelper.DefaultMaxPoolSize
         };
         return builder.ConnectionString;
+    }
+
+    public static async Task<(bool Ok, string Message, bool IsAuthError)> TestConnectionAsync(string connectionString, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return (false, "Cadena de conexion vacia.", false);
+        }
+
+        try
+        {
+            await using var conn = new SqlConnection(ConnectionStringHelper.Harden(connectionString));
+            await conn.OpenAsync(ct);
+            using var cmd = new SqlCommand("SELECT 1;", conn) { CommandTimeout = 10 };
+            await cmd.ExecuteScalarAsync(ct);
+            return (true, "Conexion correcta.", false);
+        }
+        catch (Exception ex)
+        {
+            var isAuth = ConnectionStringHelper.IsLoginFailure(ex);
+            var msg = isAuth
+                ? "Credenciales rechazadas por el servidor (usuario o contrasena incorrectos)."
+                : ex.Message;
+            return (false, msg, isAuth);
+        }
     }
 
     public static string BuildRemoteConnectionString(string host, string instance, string database, string user, string password, string? port = null)
@@ -112,7 +138,8 @@ public static class SqlDiscoveryService
             UserID = user.Trim(),
             Password = password,
             TrustServerCertificate = true,
-            ConnectTimeout = 5
+            ConnectTimeout = 5,
+            MaxPoolSize = ConnectionStringHelper.DefaultMaxPoolSize
         };
         return builder.ConnectionString;
     }
