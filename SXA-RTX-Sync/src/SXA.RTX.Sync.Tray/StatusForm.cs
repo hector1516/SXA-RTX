@@ -33,15 +33,13 @@ public sealed class StatusForm : Form
             LogoSize = 84
         };
 
-        var content = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = UiTheme.Bg };
-
         var topBar = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = UiTheme.Bg };
         _lblInfo = new Label
         {
             Dock = DockStyle.Fill,
             Text = ".",
             TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(28, 0, 0, 0),
+            Padding = new Padding(24, 0, 0, 0),
             ForeColor = UiTheme.TextDim,
             Font = UiTheme.SmallFont,
             BackColor = Color.Transparent
@@ -50,7 +48,7 @@ public sealed class StatusForm : Form
         {
             Text = "Refrescar",
             Dock = DockStyle.Right,
-            Width = 160,
+            Width = 180,
             FillColor = UiTheme.Primary,
             FillColorHover = UiTheme.PrimaryHover,
             Font = UiTheme.BodyFont
@@ -58,19 +56,30 @@ public sealed class StatusForm : Form
         topBar.Controls.Add(_lblInfo);
         topBar.Controls.Add(_btnRefresh);
 
-        _dgvSummary = CreateGrid(28, 130, 940, 240);
-        _dgvRecent = CreateGrid(28, 420, 940, 260);
-        _dgvDevices = CreateGrid(28, 730, 940, 220);
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            BackColor = UiTheme.Bg,
+            Padding = new Padding(16, 0, 16, 16)
+        };
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 33));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 33));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 34));
 
-        content.Controls.Add(_dgvSummary);
-        content.Controls.Add(_dgvRecent);
-        content.Controls.Add(_dgvDevices);
-        content.Controls.Add(SectionLabel("Resumen por tabla", 28, 100));
-        content.Controls.Add(SectionLabel("Últimos sincronizados (local)", 28, 390));
-        content.Controls.Add(SectionLabel("PCs registrados (catálogo remoto)", 28, 700));
-        content.Controls.Add(topBar);
+        _dgvSummary = CreateGrid();
+        _dgvRecent = CreateGrid();
+        _dgvDevices = CreateGrid();
+        root.Controls.Add(MakeSection("Resumen por tabla", _dgvSummary), 0, 0);
+        root.Controls.Add(MakeSection("Últimos sincronizados (local)", _dgvRecent), 0, 1);
+        root.Controls.Add(MakeSection("PCs registrados (catálogo remoto)", _dgvDevices), 0, 2);
 
-        Controls.Add(content);
+        var host = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Bg };
+        host.Controls.Add(root);
+        host.Controls.Add(topBar);
+
+        Controls.Add(host);
         Controls.Add(header);
 
         _btnRefresh.Click += async (_, _) => await RefreshAllAsync();
@@ -81,27 +90,29 @@ public sealed class StatusForm : Form
         _timer.Start();
     }
 
-    private static Label SectionLabel(string text, int x, int y)
+    private static Panel MakeSection(string title, DataGridView grid)
     {
-        return new Label
+        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 0, 0, 10), BackColor = UiTheme.Bg };
+        var label = new Label
         {
-            Text = text,
-            Location = new Point(x, y),
-            AutoSize = false,
-            Size = new Size(500, 18),
+            Dock = DockStyle.Top,
+            Height = 34,
+            Text = title,
             ForeColor = UiTheme.Accent,
             Font = new Font(UiTheme.BodyFont, FontStyle.Bold),
-            BackColor = Color.Transparent
+            TextAlign = ContentAlignment.MiddleLeft,
+            BackColor = UiTheme.Bg
         };
+        grid.Dock = DockStyle.Fill;
+        panel.Controls.Add(grid);
+        panel.Controls.Add(label);
+        return panel;
     }
 
-    private static DataGridView CreateGrid(int x, int y, int w, int h)
+    private static DataGridView CreateGrid()
     {
         var grid = new DataGridView
         {
-            Location = new Point(x, y),
-            Size = new Size(w, h),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             RowHeadersVisible = false,

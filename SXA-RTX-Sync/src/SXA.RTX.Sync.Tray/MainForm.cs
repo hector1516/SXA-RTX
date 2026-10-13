@@ -8,6 +8,7 @@ public sealed class MainForm : Form
     private readonly Updater _updater;
     private NotifyIcon _icon;
     private Label _lblStatus;
+    private Label _lblState;
     private Button _btnPause;
     private Label _lblMachine;
     private StatusDot _dot;
@@ -16,6 +17,9 @@ public sealed class MainForm : Form
     private ToolStripMenuItem? _updateMenuItem;
     private UpdateInfo? _updateInfo;
     private System.Windows.Forms.Timer? _updateTimer;
+    private System.Windows.Forms.Timer? _uptimeTimer;
+    private readonly DateTime _startedAt = DateTime.Now;
+    private Label _lblFoot = null!;
     private int _errorCount;
     private DateTime _lastErrorBalloon = DateTime.MinValue;
     private bool _updating;
@@ -29,8 +33,8 @@ public sealed class MainForm : Form
         MinimizeBox = true;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(640, 520);
-        MinimumSize = new Size(640, 520);
+        ClientSize = new Size(640, 566);
+        MinimumSize = new Size(640, 566);
         AutoScroll = true;
         BackColor = UiTheme.Bg;
         ForeColor = UiTheme.Text;
@@ -69,7 +73,7 @@ public sealed class MainForm : Form
             statusCard.ClientRectangle, 12, UiTheme.Border);
 
         _dot = new StatusDot { Location = new Point(24, 26), Size = new Size(20, 20), Color = UiTheme.Warning };
-        var lblState = new Label
+        _lblState = new Label
         {
             Location = new Point(54, 22),
             Size = new Size(300, 28),
@@ -116,6 +120,16 @@ public sealed class MainForm : Form
             Size = new Size(600, 46)
         };
 
+        _lblFoot = new Label
+        {
+            Location = new Point(20, 514),
+            Size = new Size(600, 44),
+            ForeColor = UiTheme.TextFaint,
+            Font = UiTheme.SmallFont,
+            BackColor = Color.Transparent,
+            Text = ""
+        };
+
         btnConfig.Click += (_, _) => ShowConfig();
         btnStatus.Click += (_, _) => ShowStatus();
         _btnPause.Click += (_, _) => TogglePause();
@@ -124,7 +138,7 @@ public sealed class MainForm : Form
         _errorBanner.Click += (_, _) => ShowErrors();
 
         statusCard.Controls.Add(_dot);
-        statusCard.Controls.Add(lblState);
+        statusCard.Controls.Add(_lblState);
         statusCard.Controls.Add(_lblStatus);
         statusCard.Controls.Add(_lblMachine);
 
@@ -132,6 +146,7 @@ public sealed class MainForm : Form
         Controls.Add(statusCard);
         Controls.Add(_btnLog);
         Controls.Add(_errorBanner);
+        Controls.Add(_lblFoot);
         Controls.Add(btnConfig);
         Controls.Add(btnStatus);
         Controls.Add(_btnPause);
@@ -210,6 +225,8 @@ public sealed class MainForm : Form
         {
             _manager.Start();
             _lblMachine.Text = $"{_manager.Identity.DeviceId}  ·  {TrayMachineLabel()}";
+            _lblState.Text = ok ? "En ejecución" : "Revisa la configuración";
+            _dot.Color = ok ? UiTheme.Success : UiTheme.Warning;
 
             _icon.BalloonTipTitle = "SXA RTX Sync";
             _icon.BalloonTipText = ok
@@ -227,6 +244,8 @@ public sealed class MainForm : Form
                 _ = CheckForUpdatesAsync(showResult: false);
                 StartUpdateTimer();
             }
+
+            StartUptimeTimer();
         }
         catch (Exception ex)
         {
@@ -237,6 +256,38 @@ public sealed class MainForm : Form
                 _dot.Color = UiTheme.Error;
             });
         }
+    }
+
+    private void StartUptimeTimer()
+    {
+        _uptimeTimer?.Stop();
+        _uptimeTimer?.Dispose();
+        _uptimeTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+        _uptimeTimer.Tick += (_, _) => UpdateFooter();
+        _uptimeTimer.Start();
+        UpdateFooter();
+    }
+
+    private void UpdateFooter()
+    {
+        var version = typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "—";
+        var uptime = FormatUptime(DateTime.Now - _startedAt);
+        _lblFoot.Text =
+            $"Versión {version}   ·   Iniciada: {_startedAt:yyyy-MM-dd HH:mm}   ·   En ejecución: {uptime}";
+    }
+
+    private static string FormatUptime(TimeSpan ts)
+    {
+        // Seguro para períodos muy largos (TimeSpan soporta ~29 mil años).
+        if (ts.TotalDays >= 1)
+        {
+            return $"{(long)ts.TotalDays}d {ts.Hours}h {ts.Minutes}m";
+        }
+        if (ts.TotalHours >= 1)
+        {
+            return $"{(long)ts.TotalHours}h {ts.Minutes}m {ts.Seconds}s";
+        }
+        return $"{ts.Minutes}m {ts.Seconds}s";
     }
 
     private void StartUpdateTimer()
@@ -295,6 +346,10 @@ public sealed class MainForm : Form
         _errorBanner.Visible = true;
         _btnLog.Text = $"Errores ({_errorCount})";
         _dot.Color = UiTheme.Error;
+        if (_lblState is not null && !_lblState.IsDisposed)
+        {
+            _lblState.Text = "Con errores";
+        }
 
         if (_errorCount == 1 && !_manager.IsPaused)
         {
@@ -360,6 +415,17 @@ public sealed class MainForm : Form
         if (_btnPause is not null)
         {
             _btnPause.Text = _manager.IsPaused ? "Reanudar" : "Pausar";
+        }
+        if (_lblState is not null && !_lblState.IsDisposed)
+        {
+            if (_manager.IsPaused && _errorCount == 0)
+            {
+                _lblState.Text = "En pausa";
+            }
+            else if (!_manager.IsPaused && _errorCount == 0)
+            {
+                _lblState.Text = "En ejecución";
+            }
         }
         if (_dot is not null && !_dot.IsDisposed)
         {
@@ -497,6 +563,8 @@ public sealed class MainForm : Form
     {
         _updateTimer?.Stop();
         _updateTimer?.Dispose();
+        _uptimeTimer?.Stop();
+        _uptimeTimer?.Dispose();
         _icon.Dispose();
         base.OnFormClosed(e);
     }

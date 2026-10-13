@@ -46,6 +46,7 @@ public sealed class SyncManager : IAsyncDisposable
 
     public async Task<bool> InitializeAsync()
     {
+        LogUpdated?.Invoke("Identificando el equipo…");
         try
         {
             await Identity.LoadOrCreateAsync();
@@ -56,6 +57,7 @@ public sealed class SyncManager : IAsyncDisposable
             return false;
         }
 
+        LogUpdated?.Invoke($"Preparando {_options.Tables.Count} tabla(s) y triggers… (puede tardar la primera vez)");
         try
         {
             await _schema.EnsureAllAsync(_cts.Token);
@@ -65,6 +67,7 @@ public sealed class SyncManager : IAsyncDisposable
             _logger.LogWarning(ex, "No se pudo asegurar el esquema. Revise las cadenas de conexión.");
         }
 
+        LogUpdated?.Invoke("Listo.");
         return true;
     }
 

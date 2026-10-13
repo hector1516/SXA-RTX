@@ -9,23 +9,23 @@ namespace SXA.RTX.Sync.Tray;
 public sealed class ConfigForm : Form
 {
     private readonly SyncManager _manager;
-    private readonly TextBox _tbLocal;
-    private readonly TextBox _tbRemote;
-    private readonly TextBox _tbMachineType;
-    private readonly TextBox _tbMachineName;
-    private readonly ComboBox _cbLocalInstance;
-    private readonly ComboBox _cbLocalDatabase;
-    private readonly TextBox _tbRemoteHost;
-    private readonly ComboBox _cbRemoteInstance;
-    private readonly TextBox _tbRemoteUser;
-    private readonly TextBox _tbRemotePassword;
-    private readonly ComboBox _cbRemoteDatabase;
-    private readonly Button _btnScanLocal;
-    private readonly Button _btnScanRemote;
-    private readonly DataGridView _dgvLocal;
-    private readonly DataGridView _dgvRemote;
-    private readonly DataGridView _dgvPairs;
-    private readonly Label _lblHint;
+    private TextBox _tbLocal = null!;
+    private TextBox _tbRemote = null!;
+    private TextBox _tbMachineType = null!;
+    private TextBox _tbMachineName = null!;
+    private ComboBox _cbLocalInstance = null!;
+    private ComboBox _cbLocalDatabase = null!;
+    private TextBox _tbRemoteHost = null!;
+    private ComboBox _cbRemoteInstance = null!;
+    private TextBox _tbRemoteUser = null!;
+    private TextBox _tbRemotePassword = null!;
+    private ComboBox _cbRemoteDatabase = null!;
+    private Button _btnScanLocal = null!;
+    private Button _btnScanRemote = null!;
+    private DataGridView _dgvLocal = null!;
+    private DataGridView _dgvRemote = null!;
+    private DataGridView _dgvPairs = null!;
+    private Label _lblSavedConfig = null!;
     private List<ScannedTable> _local = new();
     private List<ScannedTable> _remote = new();
 
@@ -36,130 +36,146 @@ public sealed class ConfigForm : Form
         FormBorderStyle = FormBorderStyle.Sizable;
         StartPosition = FormStartPosition.CenterScreen;
         WindowState = FormWindowState.Maximized;
-        ClientSize = new Size(1024, 720);
-        MinimumSize = new Size(900, 640);
-        AutoScroll = true;
+        ClientSize = new Size(1100, 760);
+        MinimumSize = new Size(960, 660);
         UiTheme.Apply(this);
         Icon = IconLoader.AppIcon;
 
         var header = new HeaderPanel
         {
             Dock = DockStyle.Top,
-            Height = 120,
+            Height = 118,
             Title = "Configuración",
-            Subtitle = "Conexiones, tablas a sincronizar e identificación de la máquina.",
-            LogoSize = 84
+            Subtitle = "Conexiones, enlace de tablas e identificación de la máquina.",
+            LogoSize = 82
         };
 
-        var content = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = UiTheme.Bg };
-
-        int lx = 28;          // columna izquierda
-        int rx = 520;         // columna derecha
-        int colW = 448;       // ancho columna
-
-        // Local - Instancia
-        _cbLocalInstance = CreateCombo(lx, 158, 330);
-        var btnRefreshLocalInst = CreateButton("Actualizar", lx + 338, 154, 110, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
-        // Local - Base de datos
-        _cbLocalDatabase = CreateCombo(lx, 234, 330);
-        var btnRefreshLocalDb = CreateButton("Actualizar", lx + 338, 230, 110, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
-        // Local - Cadena
-        _tbLocal = CreateTextBox(lx, 310, colW);
-        _tbLocal.ReadOnly = true;
-        _tbLocal.BackColor = Color.FromArgb(28, 32, 48);
-        var chkLocalEdit = CreateCheck("Editar cadena manualmente", lx, 352);
-        // Local - Escanear
-        _btnScanLocal = CreateButton("Escanear tablas local", lx, 386, 240, UiTheme.Primary, UiTheme.PrimaryHover);
-
-        // Remota - Host
-        _tbRemoteHost = CreateTextBox(rx, 158, 240);
-        var btnScanRemoteInst = CreateButton("Escanear instancias", rx + 248, 154, 200, UiTheme.Primary, UiTheme.PrimaryHover);
-        // Remota - Instancia
-        _cbRemoteInstance = CreateCombo(rx, 234, colW);
-        _cbRemoteInstance.DropDownStyle = ComboBoxStyle.DropDown;
-        // Remota - Usuario / Contraseña
-        _tbRemoteUser = CreateTextBox(rx, 310, 200);
-        _tbRemotePassword = CreateTextBox(rx + 216, 310, 232);
-        _tbRemotePassword.UseSystemPasswordChar = true;
-        // Remota - Base de datos
-        _cbRemoteDatabase = CreateCombo(rx, 386, 330);
-        var btnRefreshRemoteDb = CreateButton("Actualizar", rx + 338, 382, 110, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
-        // Remota - Cadena
-        _tbRemote = CreateTextBox(rx, 462, colW);
-        _tbRemote.ReadOnly = true;
-        _tbRemote.BackColor = Color.FromArgb(28, 32, 48);
-        var chkRemoteEdit = CreateCheck("Editar cadena manualmente", rx, 504);
-        // Remota - Escanear
-        _btnScanRemote = CreateButton("Escanear tablas remoto", rx, 538, 240, UiTheme.Primary, UiTheme.PrimaryHover);
-
-        // Máquina
-        _tbMachineType = CreateTextBox(lx, 620, 240);
-        _tbMachineName = CreateTextBox(lx + 300, 620, 260);
-
-        // Botones de pares
-        var btnPairs = CreateButton("Auto-generar pares", lx, 690, 240, UiTheme.Accent, UiTheme.AccentHover);
-        var btnPreselect = CreateButton("Preseleccionar existentes", lx + 252, 690, 250, UiTheme.Primary, UiTheme.PrimaryHover);
-        var btnRemove = CreateButton("Quitar par", lx + 514, 690, 180, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
-
-        _lblHint = new Label
+        var tabs = new TabControl
         {
-            Location = new Point(lx, 748),
-            Size = new Size(960, 30),
-            Text = "Configura instancias y bases. Escanea tablas. Usa 'Preseleccionar existentes' para marcar las que ya existen en remoto. Las que no existan se crearán con prefijo VTi_ / VTech_. Guarda al final.",
-            ForeColor = UiTheme.TextFaint,
-            Font = UiTheme.SmallFont,
-            BackColor = Color.Transparent
+            Dock = DockStyle.Fill,
+            Font = UiTheme.BodyFont,
+            Padding = new Point(28, 12)
         };
+        var pageConn = new TabPage("1 · Conexiones") { BackColor = UiTheme.Bg, Padding = new Padding(16) };
+        var pageTables = new TabPage("2 · Tablas y enlace") { BackColor = UiTheme.Bg, Padding = new Padding(16) };
+        tabs.TabPages.Add(pageConn);
+        tabs.TabPages.Add(pageTables);
 
-        _dgvLocal = CreateScanGrid(lx, 790, 470, 300);
-        _dgvRemote = CreateScanGrid(rx, 790, 470, 300);
-        _dgvPairs = CreatePairsGrid(lx, 1110, 962, 300);
+        BuildConnectionsPage(pageConn);
+        BuildTablesPage(pageTables);
 
-        // Botones inferiores
-        var btnSave = CreateButton("Guardar y aplicar", lx, 1430, 210, UiTheme.Primary, UiTheme.PrimaryHover);
-        var btnCancel = CreateButton("Cancelar", lx + 222, 1430, 150, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
-        var btnExport = CreateButton("Exportar config", 750, 1430, 240, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
-        var btnImport = CreateButton("Importar config", 1002, 1430, 240, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
-
-        content.Controls.AddRange(new Control[]
+        // Barra inferior
+        var bottom = new Panel { Dock = DockStyle.Bottom, Height = 76, BackColor = UiTheme.BgPanel, Padding = new Padding(20, 14, 20, 14) };
+        var btnSave = CreateButton("Guardar y aplicar", 0, 0, 230, UiTheme.Primary, UiTheme.PrimaryHover);
+        var btnCancel = CreateButton("Cancelar", 0, 0, 160, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        var btnExport = CreateButton("Exportar config", 0, 0, 220, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        var btnImport = CreateButton("Importar config", 0, 0, 220, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        btnExport.Anchor = btnImport.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        btnSave.Location = new Point(20, 16);
+        btnCancel.Location = new Point(262, 16);
+        btnExport.Location = new Point(Width, 16);   // se recoloca en Resize
+        btnImport.Location = new Point(Width, 16);
+        bottom.Controls.Add(btnSave);
+        bottom.Controls.Add(btnCancel);
+        bottom.Controls.Add(btnExport);
+        bottom.Controls.Add(btnImport);
+        void LayoutBottom()
         {
-            // Local
-            CreateFieldLabel("Instancia local (Windows Auth)", lx, 132),
-            _cbLocalInstance, btnRefreshLocalInst,
-            CreateFieldLabel("Base de datos local", lx, 208),
-            _cbLocalDatabase, btnRefreshLocalDb,
-            CreateFieldLabel("Cadena local", lx, 286),
-            _tbLocal, chkLocalEdit,
-            _btnScanLocal,
-            // Remota
-            CreateFieldLabel("Servidor remoto (IP / Host)", rx, 132),
-            _tbRemoteHost, btnScanRemoteInst,
-            CreateFieldLabel("Instancia remota", rx, 208),
-            _cbRemoteInstance,
-            CreateFieldLabel("Usuario", rx, 286),
-            CreateFieldLabel("Contraseña", rx + 216, 286),
-            _tbRemoteUser, _tbRemotePassword,
-            CreateFieldLabel("Base de datos remota", rx, 362),
-            _cbRemoteDatabase, btnRefreshRemoteDb,
-            CreateFieldLabel("Cadena remota", rx, 438),
-            _tbRemote, chkRemoteEdit,
-            _btnScanRemote,
-            // Máquina
-            CreateFieldLabel("Tipo de máquina (VTi / VTech)", lx, 594),
-            CreateFieldLabel("Nombre del PC", lx + 300, 594),
-            _tbMachineType, _tbMachineName,
-            // Pares / tablas
-            btnPairs, btnPreselect, btnRemove,
-            _lblHint, _dgvLocal, _dgvRemote, _dgvPairs,
-            btnSave, btnCancel, btnExport, btnImport
-        });
+            var w = bottom.ClientSize.Width;
+            btnImport.Location = new Point(w - btnImport.Width - 20, 16);
+            btnExport.Location = new Point(btnImport.Left - btnExport.Width - 12, 16);
+        }
+        bottom.Resize += (_, _) => LayoutBottom();
+        bottom.HandleCreated += (_, _) => LayoutBottom();
+        LayoutBottom();
 
-        Controls.Add(content);
+        btnSave.Click += async (_, _) => await SaveAsync();
+        btnCancel.Click += (_, _) => Close();
+        btnExport.Click += (_, _) => ExportConfig();
+        btnImport.Click += async (_, _) => await ImportConfigAsync();
+
+        Controls.Add(tabs);
+        Controls.Add(bottom);
         Controls.Add(header);
 
-        // Eventos
-        chkLocalEdit.CheckedChanged += (_, _) => { _tbLocal.ReadOnly = !chkLocalEdit.Checked; };
-        chkRemoteEdit.CheckedChanged += (_, _) => { _tbRemote.ReadOnly = !chkRemoteEdit.Checked; };
+        Load += async (_, _) => await OnLoadAsync();
+    }
+
+    private void BuildConnectionsPage(TabPage page)
+    {
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            BackColor = UiTheme.Bg
+        };
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+
+        var left = NewColumnPanel();
+        // Local
+        _cbLocalInstance = CreateCombo(0, 0, 360);
+        var btnRefreshLocalInst = CreateButton("Actualizar", 0, 0, 140, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        _cbLocalDatabase = CreateCombo(0, 0, 360);
+        var btnRefreshLocalDb = CreateButton("Actualizar", 0, 0, 140, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        _tbLocal = CreateTextBox(0, 0, 512);
+        _tbLocal.ReadOnly = true;
+        _tbLocal.BackColor = Color.FromArgb(28, 32, 48);
+        var chkLocalEdit = CreateCheck("Editar cadena manualmente", 0, 0);
+        _btnScanLocal = CreateButton("Escanear tablas local", 0, 0, 260, UiTheme.Primary, UiTheme.PrimaryHover);
+
+        left.Controls.Add(FieldLabel("Instancia local (Windows Auth)"));
+        left.Controls.Add(HBox(46, _cbLocalInstance, btnRefreshLocalInst));
+        left.Controls.Add(FieldLabel("Base de datos local"));
+        left.Controls.Add(HBox(46, _cbLocalDatabase, btnRefreshLocalDb));
+        left.Controls.Add(FieldLabel("Cadena de conexión local"));
+        left.Controls.Add(HBox(40, _tbLocal));
+        left.Controls.Add(HBox(34, chkLocalEdit));
+        left.Controls.Add(HBox(56, _btnScanLocal));
+        left.Controls.Add(FieldLabel("Tipo de máquina (VTi / VTech)"));
+        _tbMachineType = CreateTextBox(0, 0, 240);
+        left.Controls.Add(HBox(40, _tbMachineType));
+        left.Controls.Add(FieldLabel("Nombre del PC"));
+        _tbMachineName = CreateTextBox(0, 0, 320);
+        left.Controls.Add(HBox(40, _tbMachineName));
+
+        var right = NewColumnPanel();
+        // Remota
+        _tbRemoteHost = CreateTextBox(0, 0, 340);
+        var btnScanRemoteInst = CreateButton("Escanear instancias", 0, 0, 220, UiTheme.Primary, UiTheme.PrimaryHover);
+        _cbRemoteInstance = CreateCombo(0, 0, 570);
+        _cbRemoteInstance.DropDownStyle = ComboBoxStyle.DropDown;
+        _tbRemoteUser = CreateTextBox(0, 0, 260);
+        _tbRemotePassword = CreateTextBox(0, 0, 260);
+        _tbRemotePassword.UseSystemPasswordChar = true;
+        _cbRemoteDatabase = CreateCombo(0, 0, 360);
+        var btnRefreshRemoteDb = CreateButton("Actualizar", 0, 0, 140, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        _tbRemote = CreateTextBox(0, 0, 570);
+        _tbRemote.ReadOnly = true;
+        _tbRemote.BackColor = Color.FromArgb(28, 32, 48);
+        var chkRemoteEdit = CreateCheck("Editar cadena manualmente", 0, 0);
+        _btnScanRemote = CreateButton("Escanear tablas remoto", 0, 0, 260, UiTheme.Primary, UiTheme.PrimaryHover);
+
+        right.Controls.Add(FieldLabel("Servidor remoto (IP / Host)"));
+        right.Controls.Add(HBox(46, _tbRemoteHost, btnScanRemoteInst));
+        right.Controls.Add(FieldLabel("Instancia remota"));
+        right.Controls.Add(HBox(46, _cbRemoteInstance));
+        right.Controls.Add(FieldLabel("Usuario  ·  Contraseña"));
+        right.Controls.Add(HBox(40, _tbRemoteUser, _tbRemotePassword));
+        right.Controls.Add(FieldLabel("Base de datos remota"));
+        right.Controls.Add(HBox(46, _cbRemoteDatabase, btnRefreshRemoteDb));
+        right.Controls.Add(FieldLabel("Cadena de conexión remota"));
+        right.Controls.Add(HBox(40, _tbRemote));
+        right.Controls.Add(HBox(34, chkRemoteEdit));
+        right.Controls.Add(HBox(56, _btnScanRemote));
+
+        root.Controls.Add(left, 0, 0);
+        root.Controls.Add(right, 1, 0);
+        page.Controls.Add(root);
+
+        chkLocalEdit.CheckedChanged += (_, _) => _tbLocal.ReadOnly = !chkLocalEdit.Checked;
+        chkRemoteEdit.CheckedChanged += (_, _) => _tbRemote.ReadOnly = !chkRemoteEdit.Checked;
 
         _cbLocalInstance.SelectedIndexChanged += (_, _) => UpdateLocalConnectionString();
         _cbLocalDatabase.SelectedIndexChanged += (_, _) => UpdateLocalConnectionString();
@@ -179,33 +195,175 @@ public sealed class ConfigForm : Form
 
         _btnScanLocal.Click += async (_, _) => await ScanLocalAsync();
         _btnScanRemote.Click += async (_, _) => await ScanRemoteAsync();
+    }
+
+    private void BuildTablesPage(TabPage page)
+    {
+        _lblSavedConfig = new Label
+        {
+            Dock = DockStyle.Top,
+            Height = 84,
+            Padding = new Padding(16, 10, 16, 10),
+            BackColor = UiTheme.BgPanel,
+            ForeColor = UiTheme.Text,
+            Font = UiTheme.SmallFont,
+            Text = "Configuración guardada: —"
+        };
+
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            Height = 60,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Padding = new Padding(4, 6, 4, 6),
+            BackColor = UiTheme.Bg
+        };
+        var btnPairs = CreateButton("Auto-generar pares", 0, 0, 240, UiTheme.Accent, UiTheme.AccentHover);
+        var btnPreselect = CreateButton("Preseleccionar existentes", 0, 0, 260, UiTheme.Primary, UiTheme.PrimaryHover);
+        var btnRemove = CreateButton("Quitar par", 0, 0, 170, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        actions.Controls.Add(btnPairs);
+        actions.Controls.Add(btnPreselect);
+        actions.Controls.Add(btnRemove);
+
+        var grids = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            Height = 300,
+            ColumnCount = 2,
+            RowCount = 1,
+            BackColor = UiTheme.Bg
+        };
+        grids.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        grids.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        _dgvLocal = CreateScanGrid(0, 0, 520, 280);
+        _dgvLocal.Dock = DockStyle.Fill;
+        _dgvRemote = CreateScanGrid(0, 0, 520, 280);
+        _dgvRemote.Dock = DockStyle.Fill;
+        var colL = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 0, 8, 0), BackColor = UiTheme.Bg };
+        var colR = new Panel { Dock = DockStyle.Fill, Padding = new Padding(8, 0, 0, 0), BackColor = UiTheme.Bg };
+        colL.Controls.Add(_dgvLocal);
+        colR.Controls.Add(_dgvRemote);
+        grids.Controls.Add(colL, 0, 0);
+        grids.Controls.Add(colR, 1, 0);
+
+        var pairsTitle = new Label
+        {
+            Dock = DockStyle.Top,
+            Height = 32,
+            Text = "Enlace de tablas (Local → Remota)",
+            ForeColor = UiTheme.Accent,
+            Font = new Font(UiTheme.BodyFont, FontStyle.Bold),
+            Padding = new Padding(4, 6, 0, 0),
+            BackColor = UiTheme.Bg
+        };
+
+        _dgvPairs = CreatePairsGrid(0, 0, 900, 220);
+        _dgvPairs.Dock = DockStyle.Fill;
+
+        // Orden de docking (se agrega de abajo hacia arriba)
+        page.Controls.Add(_dgvPairs);
+        page.Controls.Add(pairsTitle);
+        page.Controls.Add(grids);
+        page.Controls.Add(actions);
+        page.Controls.Add(_lblSavedConfig);
+
         btnPairs.Click += async (_, _) => await AutoGenerateAsync();
         btnPreselect.Click += (_, _) => PreselectExisting();
         btnRemove.Click += (_, _) => RemovePair();
-        btnSave.Click += async (_, _) => await SaveAsync();
-        btnCancel.Click += (_, _) => Close();
-        btnExport.Click += (_, _) => ExportConfig();
-        btnImport.Click += async (_, _) => await ImportConfigAsync();
+    }
 
-        Load += async (_, _) => await OnLoadAsync();
+    private static FlowLayoutPanel NewColumnPanel()
+    {
+        return new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoScroll = true,
+            Padding = new Padding(12),
+            BackColor = UiTheme.Bg
+        };
+    }
+
+    private static Label FieldLabel(string text)
+    {
+        return new Label
+        {
+            AutoSize = true,
+            Text = text,
+            ForeColor = UiTheme.TextDim,
+            Font = UiTheme.SmallFont,
+            BackColor = Color.Transparent,
+            Margin = new Padding(2, 8, 2, 4)
+        };
+    }
+
+    private static Panel HBox(int height, params Control[] controls)
+    {
+        var panel = new Panel { AutoSize = false, Height = height, Width = 8 };
+        var x = 0;
+        foreach (var c in controls)
+        {
+            if (c.Height > height)
+            {
+                c.Height = height;
+            }
+            c.Location = new Point(x, 0);
+            panel.Controls.Add(c);
+            x += c.Width + 8;
+        }
+        panel.Width = x;
+        return panel;
     }
 
     private async Task OnLoadAsync()
     {
-        // Parsear cadenas actuales para precargar combos
-        ParseLocalConnectionString(_manager.CurrentOptions.LocalConnectionString);
-        ParseRemoteConnectionString(_manager.CurrentOptions.RemoteConnectionString);
-        _tbMachineType.Text = _manager.CurrentOptions.MachineType;
-        _tbMachineName.Text = _manager.CurrentOptions.MachineName;
-        _tbLocal.Text = _manager.CurrentOptions.LocalConnectionString;
-        _tbRemote.Text = _manager.CurrentOptions.RemoteConnectionString;
+        var opts = _manager.CurrentOptions;
+        ParseLocalConnectionString(opts.LocalConnectionString);
+        ParseRemoteConnectionString(opts.RemoteConnectionString);
+        _tbMachineType.Text = opts.MachineType;
+        _tbMachineName.Text = opts.MachineName;
+        _tbLocal.Text = opts.LocalConnectionString;
+        _tbRemote.Text = opts.RemoteConnectionString;
+
+        // Visualización de la configuración guardada actual
+        _dgvPairs.Rows.Clear();
+        foreach (var t in opts.Tables)
+        {
+            _dgvPairs.Rows.Add(t.LocalTable, t.RemoteTable, t.KeyColumn, t.Enabled ? "Guardada" : "Deshabilitada");
+        }
+        UpdateSavedConfigSummary();
 
         await RefreshLocalInstancesAsync();
-        // Intentar precargar BD locales si hay instancia
         if (!string.IsNullOrWhiteSpace(_cbLocalInstance.Text))
         {
             await RefreshLocalDatabasesAsync();
         }
+    }
+
+    private void UpdateSavedConfigSummary()
+    {
+        try
+        {
+            var opts = _manager.CurrentOptions;
+            var localB = SafeParse(opts.LocalConnectionString);
+            var remoteB = SafeParse(opts.RemoteConnectionString);
+            _lblSavedConfig.Text =
+                $"Configuración guardada actual\r\n" +
+                $"Tablas enlazadas: {opts.Tables.Count}    ·    Tipo de máquina: {(string.IsNullOrWhiteSpace(opts.MachineType) ? "—" : opts.MachineType)}\r\n" +
+                $"Local:  {localB.DataSource}  /  {localB.InitialCatalog}      Remoto:  {remoteB.DataSource}  /  {remoteB.InitialCatalog}";
+        }
+        catch
+        {
+            _lblSavedConfig.Text = "Configuración guardada actual: —";
+        }
+    }
+
+    private static SqlConnectionStringBuilder SafeParse(string cs)
+    {
+        try { return new SqlConnectionStringBuilder(cs); }
+        catch { return new SqlConnectionStringBuilder(); }
     }
 
     private void ParseLocalConnectionString(string cs)
@@ -823,6 +981,7 @@ public sealed class ConfigForm : Form
         {
             _dgvPairs.Rows.Add(t.LocalTable, t.RemoteTable, t.KeyColumn, t.Enabled ? "Listo" : "Deshabilitada");
         }
+        UpdateSavedConfigSummary();
     }
 
     private async Task SaveAsync()
