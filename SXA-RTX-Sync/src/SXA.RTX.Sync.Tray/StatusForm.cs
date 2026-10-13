@@ -18,51 +18,60 @@ public sealed class StatusForm : Form
         _manager = manager;
         Text = "Estado de sincronización";
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(920, 700);
+        WindowState = FormWindowState.Maximized;
+        ClientSize = new Size(1024, 720);
+        MinimumSize = new Size(900, 640);
         UiTheme.Apply(this);
         Icon = IconLoader.AppIcon;
 
         var header = new HeaderPanel
         {
             Dock = DockStyle.Top,
+            Height = 120,
             Title = "Estado de sincronización",
             Subtitle = "Resumen de tablas, últimas filas y PCs registrados en el catálogo.",
-            LogoSize = 56
+            LogoSize = 84
         };
 
+        var content = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = UiTheme.Bg };
+
+        var topBar = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = UiTheme.Bg };
         _lblInfo = new Label
         {
-            Location = new Point(24, 106),
-            Size = new Size(760, 20),
+            Dock = DockStyle.Fill,
             Text = ".",
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(28, 0, 0, 0),
             ForeColor = UiTheme.TextDim,
             Font = UiTheme.SmallFont,
             BackColor = Color.Transparent
         };
-
         _btnRefresh = new FlatButton
         {
             Text = "Refrescar",
-            Location = new Point(796, 102),
-            Size = new Size(100, 28),
+            Dock = DockStyle.Right,
+            Width = 160,
             FillColor = UiTheme.Primary,
             FillColorHover = UiTheme.PrimaryHover,
             Font = UiTheme.BodyFont
         };
+        topBar.Controls.Add(_lblInfo);
+        topBar.Controls.Add(_btnRefresh);
 
-        _dgvSummary = CreateGrid(24, 140, 872, 150);
-        _dgvRecent = CreateGrid(24, 330, 872, 180);
-        _dgvDevices = CreateGrid(24, 550, 872, 120);
+        _dgvSummary = CreateGrid(28, 130, 940, 240);
+        _dgvRecent = CreateGrid(28, 420, 940, 260);
+        _dgvDevices = CreateGrid(28, 730, 940, 220);
 
+        content.Controls.Add(_dgvSummary);
+        content.Controls.Add(_dgvRecent);
+        content.Controls.Add(_dgvDevices);
+        content.Controls.Add(SectionLabel("Resumen por tabla", 28, 100));
+        content.Controls.Add(SectionLabel("Últimos sincronizados (local)", 28, 390));
+        content.Controls.Add(SectionLabel("PCs registrados (catálogo remoto)", 28, 700));
+        content.Controls.Add(topBar);
+
+        Controls.Add(content);
         Controls.Add(header);
-        Controls.Add(_lblInfo);
-        Controls.Add(_btnRefresh);
-        Controls.Add(_dgvSummary);
-        Controls.Add(_dgvRecent);
-        Controls.Add(_dgvDevices);
-        Controls.Add(SectionLabel("Resumen por tabla", 24, 122));
-        Controls.Add(SectionLabel("Últimos sincronizados (local)", 24, 312));
-        Controls.Add(SectionLabel("PCs registrados (catálogo remoto)", 24, 532));
 
         _btnRefresh.Click += async (_, _) => await RefreshAllAsync();
         Load += async (_, _) => await RefreshAllAsync();
@@ -92,13 +101,16 @@ public sealed class StatusForm : Form
         {
             Location = new Point(x, y),
             Size = new Size(w, h),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             RowHeadersVisible = false,
             ReadOnly = true,
-            BorderStyle = BorderStyle.FixedSingle
+            BorderStyle = BorderStyle.FixedSingle,
+            RowTemplate = { Height = 38 }
         };
         UiTheme.StyleGrid(grid);
+        grid.ColumnHeadersHeight = 44;
         return grid;
     }
 

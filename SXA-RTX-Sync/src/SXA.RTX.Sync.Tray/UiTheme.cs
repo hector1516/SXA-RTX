@@ -20,11 +20,11 @@ internal static class UiTheme
     public static readonly Color TextDim = Color.FromArgb(158, 164, 186);
     public static readonly Color TextFaint = Color.FromArgb(110, 116, 142);
 
-    public static readonly Font TitleFont = new("Segoe UI Semibold", 15f, FontStyle.Bold, GraphicsUnit.Point);
-    public static readonly Font SubtitleFont = new("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
-    public static readonly Font BodyFont = new("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
-    public static readonly Font SmallFont = new("Segoe UI", 8.5f, FontStyle.Regular, GraphicsUnit.Point);
-    public static readonly Font MonoFont = new("Consolas", 9f, FontStyle.Regular, GraphicsUnit.Point);
+    public static readonly Font TitleFont = new("Segoe UI Semibold", 18f, FontStyle.Bold, GraphicsUnit.Point);
+    public static readonly Font SubtitleFont = new("Segoe UI", 11f, FontStyle.Regular, GraphicsUnit.Point);
+    public static readonly Font BodyFont = new("Segoe UI", 11f, FontStyle.Regular, GraphicsUnit.Point);
+    public static readonly Font SmallFont = new("Segoe UI", 10f, FontStyle.Regular, GraphicsUnit.Point);
+    public static readonly Font MonoFont = new("Consolas", 10f, FontStyle.Regular, GraphicsUnit.Point);
 
     public static void Apply(Control control)
     {

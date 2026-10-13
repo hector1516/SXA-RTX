@@ -24,12 +24,14 @@ public sealed class MainForm : Form
     {
         _manager = manager;
         Text = "SXA RTX Sync";
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
+        MinimizeBox = true;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(470, 340);
+        ClientSize = new Size(640, 520);
+        MinimumSize = new Size(640, 520);
+        AutoScroll = true;
         BackColor = UiTheme.Bg;
         ForeColor = UiTheme.Text;
         Font = UiTheme.BodyFont;
@@ -51,24 +53,26 @@ public sealed class MainForm : Form
         var header = new HeaderPanel
         {
             Dock = DockStyle.Top,
+            Height = 130,
             Title = "SXA RTX Sync",
-            Subtitle = "Sincronización de pruebas RTX · VTi / VTech"
+            Subtitle = "Sincronización de pruebas RTX · VTi / VTech",
+            LogoSize = 100
         };
 
         var statusCard = new Panel
         {
-            Location = new Point(14, 108),
-            Size = new Size(442, 112),
+            Location = new Point(20, 150),
+            Size = new Size(600, 168),
             BackColor = UiTheme.BgPanel
         };
         statusCard.Paint += (_, e) => UiTheme.DrawBorderRounded(e.Graphics,
-            statusCard.ClientRectangle, 10, UiTheme.Border);
+            statusCard.ClientRectangle, 12, UiTheme.Border);
 
-        _dot = new StatusDot { Location = new Point(18, 14), Color = UiTheme.Warning };
+        _dot = new StatusDot { Location = new Point(24, 26), Size = new Size(20, 20), Color = UiTheme.Warning };
         var lblState = new Label
         {
-            Location = new Point(38, 10),
-            Size = new Size(200, 20),
+            Location = new Point(54, 22),
+            Size = new Size(300, 28),
             Text = "Iniciando...",
             ForeColor = UiTheme.Text,
             Font = new Font(UiTheme.BodyFont, FontStyle.Bold),
@@ -76,16 +80,16 @@ public sealed class MainForm : Form
         };
         _lblStatus = new Label
         {
-            Location = new Point(18, 36),
-            Size = new Size(406, 26),
+            Location = new Point(24, 60),
+            Size = new Size(552, 32),
             ForeColor = UiTheme.TextDim,
             BackColor = Color.Transparent,
             AutoEllipsis = true
         };
         _lblMachine = new Label
         {
-            Location = new Point(18, 64),
-            Size = new Size(406, 40),
+            Location = new Point(24, 98),
+            Size = new Size(552, 58),
             ForeColor = UiTheme.TextFaint,
             BackColor = Color.Transparent,
             AutoEllipsis = true
@@ -94,23 +98,23 @@ public sealed class MainForm : Form
         _btnLog = new FlatButton
         {
             Text = "Errores (0)",
-            Location = new Point(14, 232),
-            Size = new Size(120, 30),
+            Location = new Point(20, 332),
+            Size = new Size(190, 52),
             FillColor = UiTheme.BgPanelAlt,
             FillColorHover = UiTheme.BgHeader,
             BorderColor = UiTheme.Border,
             Font = UiTheme.BodyFont
         };
+        var btnConfig = new FlatButton { Text = "Configuración", Location = new Point(220, 332), Size = new Size(200, 52), Font = UiTheme.BodyFont };
+        var btnStatus = new FlatButton { Text = "Estado", Location = new Point(430, 332), Size = new Size(190, 52), Font = UiTheme.BodyFont };
+        _btnPause = new FlatButton { Text = "Pausar", Location = new Point(220, 396), Size = new Size(200, 52), FillColor = UiTheme.BgPanelAlt, FillColorHover = UiTheme.BgHeader, BorderColor = UiTheme.Border, Font = UiTheme.BodyFont };
+        var btnExit = new FlatButton { Text = "Salir", Location = new Point(430, 396), Size = new Size(190, 52), FillColor = UiTheme.BgPanelAlt, FillColorHover = UiTheme.BgHeader, BorderColor = UiTheme.Border, Font = UiTheme.BodyFont };
+
         _errorBanner = new ErrorBanner
         {
-            Location = new Point(14, 268),
-            Size = new Size(442, 34)
+            Location = new Point(20, 460),
+            Size = new Size(600, 46)
         };
-
-        var btnConfig = new FlatButton { Text = "Configuración...", Location = new Point(246, 232), Size = new Size(100, 30), Font = UiTheme.BodyFont };
-        var btnStatus = new FlatButton { Text = "Estado", Location = new Point(352, 232), Size = new Size(104, 30), Font = UiTheme.BodyFont };
-        _btnPause = new FlatButton { Text = "Pausar", Location = new Point(246, 302), Size = new Size(100, 30), FillColor = UiTheme.BgPanelAlt, FillColorHover = UiTheme.BgHeader, BorderColor = UiTheme.Border, Font = UiTheme.BodyFont };
-        var btnExit = new FlatButton { Text = "Salir", Location = new Point(352, 302), Size = new Size(104, 30), FillColor = UiTheme.BgPanelAlt, FillColorHover = UiTheme.BgHeader, BorderColor = UiTheme.Border, Font = UiTheme.BodyFont };
 
         btnConfig.Click += (_, _) => ShowConfig();
         btnStatus.Click += (_, _) => ShowStatus();
@@ -173,9 +177,6 @@ public sealed class MainForm : Form
 
     private async void OnShown(object? sender, EventArgs e)
     {
-        var ok = await _manager.InitializeAsync();
-        _manager.Start();
-
         _manager.LogUpdated += msg => SafeInvoke(() =>
         {
             _lblStatus.Text = msg;
@@ -184,24 +185,57 @@ public sealed class MainForm : Form
         _manager.StateChanged += () => SafeInvoke(RefreshPauseButton);
         Diagnostics.ErrorRaised += record => SafeInvoke(() => OnError(record.Source, record.Message));
 
-        _lblMachine.Text = $"{_manager.Identity.DeviceId}  ·  {TrayMachineLabel()}";
-
         Hide();
-        _icon.BalloonTipTitle = "SXA RTX Sync";
-        _icon.BalloonTipText = ok
-            ? $"En ejecución. Dispositivo {_manager.Identity.DeviceId}."
-            : "No se pudo determinar el dispositivo. Abra la configuración.";
-        _icon.ShowBalloonTip(3000);
 
-        if (!ok || !TrayComposition.IsConfigValid(_manager.CurrentOptions))
+        var ok = false;
+        try
         {
-            ShowConfig();
+            var initTask = Task.Run(() => _manager.InitializeAsync());
+            var completed = await Task.WhenAny(initTask, Task.Delay(TimeSpan.FromSeconds(20)));
+            if (completed == initTask)
+            {
+                ok = await initTask;
+            }
+            else
+            {
+                Diagnostics.Warn("Inicio", "La inicialización tardó demasiado; se continúa en segundo plano.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Diagnostics.Error("Inicio", "No se pudo inicializar la sincronización.", ex);
         }
 
-        if (_manager.CurrentOptions.AutoCheckUpdates)
+        try
         {
-            _ = CheckForUpdatesAsync(showResult: false);
-            StartUpdateTimer();
+            _manager.Start();
+            _lblMachine.Text = $"{_manager.Identity.DeviceId}  ·  {TrayMachineLabel()}";
+
+            _icon.BalloonTipTitle = "SXA RTX Sync";
+            _icon.BalloonTipText = ok
+                ? $"En ejecución. Dispositivo {_manager.Identity.DeviceId}."
+                : "No se pudo determinar el dispositivo. Abra la configuración.";
+            _icon.ShowBalloonTip(3000);
+
+            if (!ok || !TrayComposition.IsConfigValid(_manager.CurrentOptions))
+            {
+                ShowConfig();
+            }
+
+            if (_manager.CurrentOptions.AutoCheckUpdates)
+            {
+                _ = CheckForUpdatesAsync(showResult: false);
+                StartUpdateTimer();
+            }
+        }
+        catch (Exception ex)
+        {
+            Diagnostics.Error("Inicio", "Error tras inicializar.", ex);
+            SafeInvoke(() =>
+            {
+                _lblStatus.Text = "No se pudo iniciar. Revisa Errores.";
+                _dot.Color = UiTheme.Error;
+            });
         }
     }
 

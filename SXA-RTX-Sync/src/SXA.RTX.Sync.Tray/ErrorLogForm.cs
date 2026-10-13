@@ -13,40 +13,48 @@ public sealed class ErrorLogForm : Form
     {
         Text = "Registro de errores - SXA RTX Sync";
         StartPosition = FormStartPosition.CenterScreen;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        ClientSize = new Size(860, 520);
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
+        MinimizeBox = true;
+        WindowState = FormWindowState.Maximized;
+        ClientSize = new Size(1000, 720);
+        MinimumSize = new Size(880, 600);
         UiTheme.Apply(this);
         Icon = IconLoader.AppIcon;
 
         var header = new HeaderPanel
         {
             Dock = DockStyle.Top,
+            Height = 120,
             Title = "Registro de errores",
             Subtitle = "Los errores no detienen la sincronización. Esto es solo para diagnóstico.",
-            LogoSize = 56
+            LogoSize = 84
         };
+
+        var content = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = UiTheme.Bg };
 
         _dgv = new DataGridView
         {
-            Location = new Point(14, 118),
-            Size = new Size(832, 190),
+            Location = new Point(20, 24),
+            Size = new Size(940, 300),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             ReadOnly = true,
             MultiSelect = false,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            RowTemplate = { Height = 38 }
         };
         UiTheme.StyleGrid(_dgv);
+        _dgv.ColumnHeadersHeight = 44;
         _dgv.Columns.Add("Time", "Hora");
         _dgv.Columns.Add("Source", "Origen");
         _dgv.Columns.Add("Message", "Mensaje");
 
         _lblDetailTitle = new Label
         {
-            Location = new Point(14, 318),
-            Size = new Size(832, 20),
+            Location = new Point(20, 340),
+            Size = new Size(940, 26),
             Text = "Detalle",
             Font = new Font(UiTheme.BodyFont, FontStyle.Bold),
             ForeColor = UiTheme.Accent
@@ -54,8 +62,9 @@ public sealed class ErrorLogForm : Form
 
         _tbDetail = new TextBox
         {
-            Location = new Point(14, 342),
-            Size = new Size(832, 130),
+            Location = new Point(20, 372),
+            Size = new Size(940, 240),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             Multiline = true,
             ReadOnly = true,
             ScrollBars = ScrollBars.Both,
@@ -68,8 +77,8 @@ public sealed class ErrorLogForm : Form
         var btnCopy = new FlatButton
         {
             Text = "Copiar seleccionado",
-            Location = new Point(14, 480),
-            Size = new Size(180, 32),
+            Location = new Point(20, 630),
+            Size = new Size(240, 46),
             FillColor = UiTheme.Primary,
             FillColorHover = UiTheme.PrimaryHover,
             Font = UiTheme.BodyFont
@@ -77,8 +86,8 @@ public sealed class ErrorLogForm : Form
         var btnOpenLog = new FlatButton
         {
             Text = "Abrir archivo de log",
-            Location = new Point(204, 480),
-            Size = new Size(180, 32),
+            Location = new Point(274, 630),
+            Size = new Size(240, 46),
             FillColor = UiTheme.BgPanelAlt,
             FillColorHover = UiTheme.BgHeader,
             BorderColor = UiTheme.Border,
@@ -87,21 +96,23 @@ public sealed class ErrorLogForm : Form
         var btnClose = new FlatButton
         {
             Text = "Cerrar",
-            Location = new Point(760, 480),
-            Size = new Size(86, 32),
+            Location = new Point(840, 630),
+            Size = new Size(120, 46),
             FillColor = UiTheme.BgPanelAlt,
             FillColorHover = UiTheme.BgHeader,
             BorderColor = UiTheme.Border,
             Font = UiTheme.BodyFont
         };
 
+        content.Controls.Add(_dgv);
+        content.Controls.Add(_lblDetailTitle);
+        content.Controls.Add(_tbDetail);
+        content.Controls.Add(btnCopy);
+        content.Controls.Add(btnOpenLog);
+        content.Controls.Add(btnClose);
+
+        Controls.Add(content);
         Controls.Add(header);
-        Controls.Add(_dgv);
-        Controls.Add(_lblDetailTitle);
-        Controls.Add(_tbDetail);
-        Controls.Add(btnCopy);
-        Controls.Add(btnOpenLog);
-        Controls.Add(btnClose);
 
         btnCopy.Click += (_, _) => CopySelected();
         btnOpenLog.Click += (_, _) => OpenLogFile();
