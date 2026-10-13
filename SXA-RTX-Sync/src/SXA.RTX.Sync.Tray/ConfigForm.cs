@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using SXA.RTX.Sync.Core.Configuration;
 using SXA.RTX.Sync.Core.Sync;
@@ -103,6 +104,8 @@ public sealed class ConfigForm : Form
         var btnRemove = CreateButton("Quitar par", 334, 472, 120, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
         var btnSave = CreateButton("Guardar y aplicar", 24, 820, 150, UiTheme.Primary, UiTheme.PrimaryHover);
         var btnCancel = CreateButton("Cancelar", 186, 820, 110, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        var btnExport = CreateButton("Exportar config", 640, 820, 130, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
+        var btnImport = CreateButton("Importar config", 776, 820, 120, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
 
         _lblHint = new Label
         {
@@ -156,6 +159,8 @@ public sealed class ConfigForm : Form
         Controls.Add(btnRemove);
         Controls.Add(btnSave);
         Controls.Add(btnCancel);
+        Controls.Add(btnExport);
+        Controls.Add(btnImport);
         Controls.Add(_lblHint);
         Controls.Add(_dgvLocal);
         Controls.Add(_dgvRemote);
@@ -187,6 +192,8 @@ public sealed class ConfigForm : Form
         btnRemove.Click += (_, _) => RemovePair();
         btnSave.Click += async (_, _) => await SaveAsync();
         btnCancel.Click += (_, _) => Close();
+        btnExport.Click += (_, _) => ExportConfig();
+        btnImport.Click += async (_, _) => await ImportConfigAsync();
 
         Load += async (_, _) => await OnLoadAsync();
     }
@@ -667,6 +674,91 @@ public sealed class ConfigForm : Form
         if (_dgvPairs.CurrentRow is not null)
         {
             _dgvPairs.Rows.Remove(_dgvPairs.CurrentRow);
+        }
+    }
+
+    private void ExportConfig()
+    {
+        using var dlg = new SaveFileDialog
+        {
+            Title = "Exportar configuración",
+            Filter = "Configuración SXA (*.json)|*.json",
+            FileName = $"sxa-rtx-config-{Environment.MachineName}.json"
+        };
+        if (dlg.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            var json = JsonSerializer.Serialize(_manager.CurrentOptions, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(dlg.FileName, json);
+            MessageBox.Show(this, $"Configuración exportada:\r\n{dlg.FileName}", "Exportar",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"No se pudo exportar: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private async Task ImportConfigAsync()
+    {
+        using var dlg = new OpenFileDialog
+        {
+            Title = "Importar configuración",
+            Filter = "Configuración SXA (*.json)|*.json|Todos los archivos (*.*)|*.*"
+        };
+        if (dlg.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            var options = JsonSerializer.Deserialize<SyncOptions>(File.ReadAllText(dlg.FileName));
+            if (options is null || string.IsNullOrWhiteSpace(options.LocalConnectionString) ||
+                string.IsNullOrWhiteSpace(options.RemoteConnectionString))
+            {
+                MessageBox.Show(this, "El archivo no contiene una configuración válida.", "Importar",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var confirm = MessageBox.Show(this,
+                $"Se importará la configuración de {options.Tables.Count} tabla(s) y se aplicará ahora.\r\n¿Continuar?",
+                "Importar configuración", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+            if (confirm != DialogResult.Yes)
+            {
+                return;
+            }
+
+            await _manager.ReconfigureAsync(options, CancellationToken.None);
+            PopulateFromOptions(options);
+            MessageBox.Show(this, "Configuración importada y aplicada.", "Importar",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"No se pudo importar: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void PopulateFromOptions(SyncOptions options)
+    {
+        _tbMachineType.Text = options.MachineType;
+        _tbMachineName.Text = options.MachineName;
+        ParseLocalConnectionString(options.LocalConnectionString);
+        ParseRemoteConnectionString(options.RemoteConnectionString);
+        _tbLocal.Text = options.LocalConnectionString;
+        _tbRemote.Text = options.RemoteConnectionString;
+        _dgvPairs.Rows.Clear();
+        foreach (var t in options.Tables)
+        {
+            _dgvPairs.Rows.Add(t.LocalTable, t.RemoteTable, t.KeyColumn, t.Enabled ? "Listo" : "Deshabilitada");
         }
     }
 

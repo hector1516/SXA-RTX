@@ -18,6 +18,7 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <AssemblyTitle>SXA RTX Sync</AssemblyTitle>
     <Product>SXA RTX Sync</Product>
     <Description>Sincronizador VTi/VTech de pruebas RTX</Description>

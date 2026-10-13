@@ -130,18 +130,18 @@ public sealed class StatusForm : Form
         _dgvSummary.Columns.Clear();
         _dgvSummary.Columns.Add("TableName", "Tabla");
         _dgvSummary.Columns.Add("Pend", "Pendientes");
-        _dgvSummary.Columns.Add("Proc", "En proceso");
+        _dgvSummary.Columns.Add("EnProceso", "En proceso");
         _dgvSummary.Columns.Add("Ok", "Sincronizadas");
         _dgvSummary.Columns.Add("Err", "Errores");
         _dgvSummary.Columns.Add("Ultima", "Última");
 
         const string sql = """
             SELECT TableName,
-                   SUM(CASE WHEN Status = 0 THEN 1 ELSE 0 END) AS Pend,
-                   SUM(CASE WHEN Status = 1 THEN 1 ELSE 0 END) AS Proc,
-                   SUM(CASE WHEN Status = 2 THEN 1 ELSE 0 END) AS Ok,
-                   SUM(CASE WHEN Status = -1 THEN 1 ELSE 0 END) AS Err,
-                   MAX(DoneAt) AS Ultima
+                   SUM(CASE WHEN Status = 0 THEN 1 ELSE 0 END) AS [Pend],
+                   SUM(CASE WHEN Status = 1 THEN 1 ELSE 0 END) AS [EnProceso],
+                   SUM(CASE WHEN Status = 2 THEN 1 ELSE 0 END) AS [Ok],
+                   SUM(CASE WHEN Status = -1 THEN 1 ELSE 0 END) AS [Err],
+                   MAX(DoneAt) AS [Ultima]
             FROM dbo.SXA_SyncLog
             GROUP BY TableName
             ORDER BY TableName;
@@ -155,7 +155,7 @@ public sealed class StatusForm : Form
         {
             var t = Convert.ToString(reader["TableName"]) ?? "";
             var ult = reader["Ultima"] == DBNull.Value ? "" : Convert.ToDateTime(reader["Ultima"]).ToString("yyyy-MM-dd HH:mm");
-            _dgvSummary.Rows.Add(t, reader["Pend"], reader["Proc"], reader["Ok"], reader["Err"], ult);
+            _dgvSummary.Rows.Add(t, reader["Pend"], reader["EnProceso"], reader["Ok"], reader["Err"], ult);
         }
     }
 

@@ -20,6 +20,7 @@ public sealed class SplashScreen : Form
         TransparencyKey = Color.Magenta;
         Size = new Size(460, 460);
         DoubleBuffered = true;
+        UiTheme.PrepareForm(this);
 
         _logo = TryLoadLogo();
         _timer = new System.Windows.Forms.Timer { Interval = 16 };

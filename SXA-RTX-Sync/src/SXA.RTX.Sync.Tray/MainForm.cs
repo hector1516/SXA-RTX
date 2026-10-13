@@ -33,6 +33,7 @@ public sealed class MainForm : Form
         BackColor = UiTheme.Bg;
         ForeColor = UiTheme.Text;
         Font = UiTheme.BodyFont;
+        UiTheme.PrepareForm(this);
         Icon = IconLoader.AppIcon;
 
         _updater = new Updater(manager.CurrentOptions);

@@ -31,6 +31,18 @@ internal static class UiTheme
         control.BackColor = Bg;
         control.ForeColor = Text;
         control.Font = BodyFont;
+
+        if (control is Form form)
+        {
+            form.AutoScaleMode = AutoScaleMode.Dpi;
+            form.AutoScaleDimensions = new SizeF(96F, 96F);
+        }
+    }
+
+    public static void PrepareForm(Form form)
+    {
+        form.AutoScaleMode = AutoScaleMode.Dpi;
+        form.AutoScaleDimensions = new SizeF(96F, 96F);
     }
 
     public static void StyleLabel(Label label, bool bold = false, bool dim = false)
