@@ -26,8 +26,10 @@ public sealed class ConfigForm : Form
     private DataGridView _dgvRemote = null!;
     private DataGridView _dgvPairs = null!;
     private Label _lblSavedConfig = null!;
+    private Label _lblConnInfo = null!;
     private List<ScannedTable> _local = new();
     private List<ScannedTable> _remote = new();
+
 
     public ConfigForm(SyncManager manager)
     {
@@ -44,13 +46,13 @@ public sealed class ConfigForm : Form
         var header = new HeaderPanel
         {
             Dock = DockStyle.Top,
-            Height = 118,
+            Height = 136,
             Title = "Configuración",
             Subtitle = "Conexiones, enlace de tablas e identificación de la máquina.",
-            LogoSize = 82
+            LogoSize = 116
         };
 
-        var tabs = new TabControl
+        var tabs = new FlatTabControl
         {
             Dock = DockStyle.Fill,
             Font = UiTheme.BodyFont,
@@ -174,6 +176,18 @@ public sealed class ConfigForm : Form
         root.Controls.Add(right, 1, 0);
         page.Controls.Add(root);
 
+        _lblConnInfo = new Label
+        {
+            Dock = DockStyle.Bottom,
+            Height = 96,
+            Padding = new Padding(16, 10, 16, 10),
+            BackColor = UiTheme.BgPanel,
+            ForeColor = UiTheme.TextDim,
+            Font = UiTheme.SmallFont,
+            Text = "Configuración guardada: —"
+        };
+        page.Controls.Add(_lblConnInfo);
+
         chkLocalEdit.CheckedChanged += (_, _) => _tbLocal.ReadOnly = !chkLocalEdit.Checked;
         chkRemoteEdit.CheckedChanged += (_, _) => _tbRemote.ReadOnly = !chkRemoteEdit.Checked;
 
@@ -221,9 +235,11 @@ public sealed class ConfigForm : Form
         };
         var btnPairs = CreateButton("Auto-generar pares", 0, 0, 240, UiTheme.Accent, UiTheme.AccentHover);
         var btnPreselect = CreateButton("Preseleccionar existentes", 0, 0, 260, UiTheme.Primary, UiTheme.PrimaryHover);
+        var btnBackfill = CreateButton("Sincronizar historial (30 días)", 0, 0, 300, UiTheme.Primary, UiTheme.PrimaryHover);
         var btnRemove = CreateButton("Quitar par", 0, 0, 170, UiTheme.BgPanelAlt, UiTheme.BgHeader, UiTheme.Border);
         actions.Controls.Add(btnPairs);
         actions.Controls.Add(btnPreselect);
+        actions.Controls.Add(btnBackfill);
         actions.Controls.Add(btnRemove);
 
         var grids = new TableLayoutPanel
@@ -270,7 +286,36 @@ public sealed class ConfigForm : Form
 
         btnPairs.Click += async (_, _) => await AutoGenerateAsync();
         btnPreselect.Click += (_, _) => PreselectExisting();
+        btnBackfill.Click += async (_, _) => await RunBackfillAsync();
         btnRemove.Click += (_, _) => RemovePair();
+    }
+
+    private async Task RunBackfillAsync()
+    {
+        var days = _manager.CurrentOptions.BackfillLookbackDays <= 0 ? 30 : _manager.CurrentOptions.BackfillLookbackDays;
+        var confirm = MessageBox.Show(this,
+            $"Se encolarán los registros de los últimos {days} días para subirlos al servidor central.\r\n\r\n" +
+            "Solo se hace una vez (las tablas sin columna de fecha se omiten). ¿Continuar?",
+            "Sincronizar historial", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+        if (confirm != DialogResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            var results = await _manager.RunBackfillAsync(force: true, CancellationToken.None);
+            var lines = results.Select(r =>
+                $"· {r.Table}: {(r.Note is not null ? r.Note : $"{r.Enqueued} fila(s) (col {r.DateColumn})")}");
+            MessageBox.Show(this,
+                "Historial encolado. Se subirá en segundo plano por lotes.\r\n\r\n" + string.Join("\r\n", lines),
+                "Sincronizar historial", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"No se pudo encolar el historial: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private static FlowLayoutPanel NewColumnPanel()
@@ -349,10 +394,15 @@ public sealed class ConfigForm : Form
             var opts = _manager.CurrentOptions;
             var localB = SafeParse(opts.LocalConnectionString);
             var remoteB = SafeParse(opts.RemoteConnectionString);
-            _lblSavedConfig.Text =
+            var summary =
                 $"Configuración guardada actual\r\n" +
-                $"Tablas enlazadas: {opts.Tables.Count}    ·    Tipo de máquina: {(string.IsNullOrWhiteSpace(opts.MachineType) ? "—" : opts.MachineType)}\r\n" +
+                $"Tablas enlazadas: {opts.Tables.Count}    ·    Tipo de máquina: {(string.IsNullOrWhiteSpace(opts.MachineType) ? "—" : opts.MachineType)}    ·    Historial: {(opts.BackfillLookbackDays > 0 ? $"últimos {opts.BackfillLookbackDays} días" : "desactivado")}\r\n" +
                 $"Local:  {localB.DataSource}  /  {localB.InitialCatalog}      Remoto:  {remoteB.DataSource}  /  {remoteB.InitialCatalog}";
+            _lblSavedConfig.Text = summary;
+            if (_lblConnInfo is not null)
+            {
+                _lblConnInfo.Text = summary;
+            }
         }
         catch
         {
@@ -1028,6 +1078,7 @@ public sealed class ConfigForm : Form
                 AutoInstallUpdates = _manager.CurrentOptions.AutoInstallUpdates,
                 UpdateCheckIntervalMinutes = _manager.CurrentOptions.UpdateCheckIntervalMinutes,
                 UpdateRepo = _manager.CurrentOptions.UpdateRepo,
+                BackfillLookbackDays = _manager.CurrentOptions.BackfillLookbackDays,
                 Tables = tables
             };
 

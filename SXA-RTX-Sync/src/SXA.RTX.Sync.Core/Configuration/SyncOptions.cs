@@ -19,6 +19,7 @@ public sealed class SyncOptions
     public bool AutoInstallUpdates { get; set; } = true;
     public int UpdateCheckIntervalMinutes { get; set; } = 60;
     public string UpdateRepo { get; set; } = "hector1516/SXA-RTX";
+    public int BackfillLookbackDays { get; set; } = 30;
     public List<SyncTableConfig> Tables { get; set; } = new();
 }
 

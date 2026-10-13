@@ -60,27 +60,41 @@ public sealed class HeaderPanel : Panel
         using var pen = new Pen(Color.FromArgb(70, UiTheme.Accent), 1f);
         g.DrawLine(pen, 0, Height - 1, Width, Height - 1);
 
+        var logoLeft = 20;
+        var size = Math.Min(LogoSize, Height - 16);
+        var textLeft = 28;
+
         if (_logo is not null)
         {
-            var size = Math.Min(LogoSize, Height - 16);
-            var rect = new Rectangle(Width - size - 14, (Height - size) / 2, size, size);
+            var rect = new Rectangle(logoLeft, (Height - size) / 2, size, size);
+            // Halo sutil para dar protagonismo al logo
+            using (var glow = new SolidBrush(Color.FromArgb(26, UiTheme.Accent)))
+            {
+                g.FillEllipse(glow, rect.X - 8, rect.Y - 8, rect.Width + 16, rect.Height + 16);
+            }
             g.DrawImage(_logo, rect);
+            textLeft = rect.Right + 22;
         }
 
         var sf = new StringFormat { FormatFlags = StringFormatFlags.NoWrap };
-        var textWidth = _logo is null ? Width - 28 : Width - LogoSize - 50;
+        var textWidth = Width - textLeft - 24;
 
-        var titleRect = new RectangleF(18, 14, textWidth, 34);
-        using (var shadow = new SolidBrush(Color.FromArgb(80, 0, 0, 0)))
+        var titleHeight = 40f;
+        var subHeight = 26f;
+        var totalText = titleHeight + subHeight + 6;
+        var top = (Height - totalText) / 2f;
+
+        var titleRect = new RectangleF(textLeft, top, textWidth, titleHeight);
+        using (var shadow = new SolidBrush(Color.FromArgb(90, 0, 0, 0)))
         {
-            g.DrawString(Title, UiTheme.TitleFont, shadow, titleRect.X + 1, titleRect.Y + 1, sf);
+            g.DrawString(Title, UiTheme.TitleFont, shadow, titleRect.X + 2, titleRect.Y + 2, sf);
         }
         using (var titleBrush = new SolidBrush(UiTheme.Text))
         {
             g.DrawString(Title, UiTheme.TitleFont, titleBrush, titleRect, sf);
         }
 
-        var subRect = new RectangleF(18, 48, textWidth, 22);
+        var subRect = new RectangleF(textLeft, top + titleHeight + 2, textWidth, subHeight);
         using var subBrush = new SolidBrush(UiTheme.TextDim);
         g.DrawString(Subtitle, UiTheme.SubtitleFont, subBrush, subRect, sf);
     }

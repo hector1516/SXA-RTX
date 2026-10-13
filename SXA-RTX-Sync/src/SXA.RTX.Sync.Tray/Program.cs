@@ -31,8 +31,9 @@ internal static class Program
         var schema = new SchemaManager(iopts, loggerFactory.CreateLogger<SchemaManager>());
         var engine = new SyncEngine(iopts, loggerFactory.CreateLogger<SyncEngine>());
         var registry = new DeviceRegistry(iopts, loggerFactory.CreateLogger<DeviceRegistry>());
+        var backfill = new BackfillService(iopts, loggerFactory.CreateLogger<BackfillService>());
         var manager = new SyncManager(
-            store, engine, schema, registry, identity,
+            store, engine, schema, registry, backfill, identity,
             loggerFactory.CreateLogger<SyncManager>(), options);
 
         loggerFactory.CreateLogger("SXA.RTX.Sync.Tray.Program").LogInformation(

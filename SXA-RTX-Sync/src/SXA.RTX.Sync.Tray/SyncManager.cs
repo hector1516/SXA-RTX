@@ -11,6 +11,7 @@ public sealed class SyncManager : IAsyncDisposable
     private readonly SyncEngine _engine;
     private readonly SchemaManager _schema;
     private readonly DeviceRegistry _registry;
+    private readonly BackfillService _backfill;
     private readonly ILogger<SyncManager> _logger;
     private SyncOptions _options;
     private CancellationTokenSource _cts = new();
@@ -31,6 +32,7 @@ public sealed class SyncManager : IAsyncDisposable
         SyncEngine engine,
         SchemaManager schema,
         DeviceRegistry registry,
+        BackfillService backfill,
         DeviceIdentity identity,
         ILogger<SyncManager> logger,
         SyncOptions options)
@@ -39,6 +41,7 @@ public sealed class SyncManager : IAsyncDisposable
         _engine = engine;
         _schema = schema;
         _registry = registry;
+        _backfill = backfill;
         Identity = identity;
         _logger = logger;
         _options = options;
@@ -67,8 +70,32 @@ public sealed class SyncManager : IAsyncDisposable
             _logger.LogWarning(ex, "No se pudo asegurar el esquema. Revise las cadenas de conexión.");
         }
 
+        if (_options.BackfillLookbackDays > 0)
+        {
+            try
+            {
+                await RunBackfillAsync(force: false, _cts.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo encolar el historial inicial.");
+            }
+        }
+
         LogUpdated?.Invoke("Listo.");
         return true;
+    }
+
+    public async Task<List<BackfillTableResult>> RunBackfillAsync(bool force, CancellationToken ct)
+    {
+        var days = _options.BackfillLookbackDays <= 0 ? 30 : _options.BackfillLookbackDays;
+        LogUpdated?.Invoke($"Encolando historial de los últimos {days} días…");
+        var results = await _backfill.RunAsync(days, force, ct);
+        var total = results.Sum(r => r.Enqueued);
+        LogUpdated?.Invoke(total > 0
+            ? $"Historial encolado: {total} fila(s) para subir."
+            : "Historial: nada nuevo por encolar.");
+        return results;
     }
 
     public void Start()
@@ -117,6 +144,7 @@ public sealed class SyncManager : IAsyncDisposable
         current.AutoInstallUpdates = newOptions.AutoInstallUpdates;
         current.UpdateCheckIntervalMinutes = newOptions.UpdateCheckIntervalMinutes;
         current.UpdateRepo = newOptions.UpdateRepo;
+        current.BackfillLookbackDays = newOptions.BackfillLookbackDays;
         current.Tables = newOptions.Tables;
 
         _store.Save(current);

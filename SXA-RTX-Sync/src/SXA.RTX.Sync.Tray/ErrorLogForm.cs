@@ -25,10 +25,10 @@ public sealed class ErrorLogForm : Form
         var header = new HeaderPanel
         {
             Dock = DockStyle.Top,
-            Height = 120,
+            Height = 136,
             Title = "Registro de errores",
             Subtitle = "Los errores no detienen la sincronización. Esto es solo para diagnóstico.",
-            LogoSize = 84
+            LogoSize = 116
         };
 
         var content = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = UiTheme.Bg };

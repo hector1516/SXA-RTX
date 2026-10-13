@@ -33,8 +33,8 @@ public sealed class MainForm : Form
         MinimizeBox = true;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(640, 566);
-        MinimumSize = new Size(640, 566);
+        ClientSize = new Size(640, 590);
+        MinimumSize = new Size(640, 590);
         AutoScroll = true;
         BackColor = UiTheme.Bg;
         ForeColor = UiTheme.Text;
@@ -57,15 +57,15 @@ public sealed class MainForm : Form
         var header = new HeaderPanel
         {
             Dock = DockStyle.Top,
-            Height = 130,
+            Height = 150,
             Title = "SXA RTX Sync",
             Subtitle = "Sincronización de pruebas RTX · VTi / VTech",
-            LogoSize = 100
+            LogoSize = 130
         };
 
         var statusCard = new Panel
         {
-            Location = new Point(20, 150),
+            Location = new Point(20, 170),
             Size = new Size(600, 168),
             BackColor = UiTheme.BgPanel
         };
@@ -102,27 +102,27 @@ public sealed class MainForm : Form
         _btnLog = new FlatButton
         {
             Text = "Errores (0)",
-            Location = new Point(20, 332),
+            Location = new Point(20, 352),
             Size = new Size(190, 52),
             FillColor = UiTheme.BgPanelAlt,
             FillColorHover = UiTheme.BgHeader,
             BorderColor = UiTheme.Border,
             Font = UiTheme.BodyFont
         };
-        var btnConfig = new FlatButton { Text = "Configuración", Location = new Point(220, 332), Size = new Size(200, 52), Font = UiTheme.BodyFont };
-        var btnStatus = new FlatButton { Text = "Estado", Location = new Point(430, 332), Size = new Size(190, 52), Font = UiTheme.BodyFont };
-        _btnPause = new FlatButton { Text = "Pausar", Location = new Point(220, 396), Size = new Size(200, 52), FillColor = UiTheme.BgPanelAlt, FillColorHover = UiTheme.BgHeader, BorderColor = UiTheme.Border, Font = UiTheme.BodyFont };
-        var btnExit = new FlatButton { Text = "Salir", Location = new Point(430, 396), Size = new Size(190, 52), FillColor = UiTheme.BgPanelAlt, FillColorHover = UiTheme.BgHeader, BorderColor = UiTheme.Border, Font = UiTheme.BodyFont };
+        var btnConfig = new FlatButton { Text = "Configuración", Location = new Point(220, 352), Size = new Size(200, 52), Font = UiTheme.BodyFont };
+        var btnStatus = new FlatButton { Text = "Estado", Location = new Point(430, 352), Size = new Size(190, 52), Font = UiTheme.BodyFont };
+        _btnPause = new FlatButton { Text = "Pausar", Location = new Point(220, 416), Size = new Size(200, 52), FillColor = UiTheme.BgPanelAlt, FillColorHover = UiTheme.BgHeader, BorderColor = UiTheme.Border, Font = UiTheme.BodyFont };
+        var btnExit = new FlatButton { Text = "Salir", Location = new Point(430, 416), Size = new Size(190, 52), FillColor = UiTheme.BgPanelAlt, FillColorHover = UiTheme.BgHeader, BorderColor = UiTheme.Border, Font = UiTheme.BodyFont };
 
         _errorBanner = new ErrorBanner
         {
-            Location = new Point(20, 460),
+            Location = new Point(20, 480),
             Size = new Size(600, 46)
         };
 
         _lblFoot = new Label
         {
-            Location = new Point(20, 514),
+            Location = new Point(20, 534),
             Size = new Size(600, 44),
             ForeColor = UiTheme.TextFaint,
             Font = UiTheme.SmallFont,

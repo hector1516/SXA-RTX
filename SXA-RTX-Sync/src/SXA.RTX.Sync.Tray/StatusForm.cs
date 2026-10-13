@@ -27,10 +27,10 @@ public sealed class StatusForm : Form
         var header = new HeaderPanel
         {
             Dock = DockStyle.Top,
-            Height = 120,
+            Height = 136,
             Title = "Estado de sincronización",
             Subtitle = "Resumen de tablas, últimas filas y PCs registrados en el catálogo.",
-            LogoSize = 84
+            LogoSize = 116
         };
 
         var topBar = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = UiTheme.Bg };
